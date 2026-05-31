@@ -1,0 +1,55 @@
+page {
+  min-height: 100%;
+  background: #f6f8f5;
+  color: #1f2925;
+  font-size: 28rpx;
+}
+
+view,
+text,
+input,
+textarea,
+button {
+  box-sizing: border-box;
+}
+
+button::after {
+  border: 0;
+}
+
+.page {
+  min-height: 100vh;
+  padding: 28rpx;
+}
+
+.card {
+  border-radius: 24rpx;
+  background: #ffffff;
+  box-shadow: 0 8rpx 30rpx rgba(34, 78, 59, 0.06);
+}
+
+.primary-button {
+  border-radius: 999rpx;
+  background: #23734f;
+  color: #ffffff;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.secondary-button {
+  border: 2rpx solid #23734f;
+  border-radius: 999rpx;
+  background: #ffffff;
+  color: #23734f;
+  font-size: 28rpx;
+}
+
+.section-title {
+  color: #1d342b;
+  font-size: 34rpx;
+  font-weight: 700;
+}
+
+.muted {
+  color: #87918d;
+}

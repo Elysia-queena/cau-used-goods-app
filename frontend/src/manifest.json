@@ -1,0 +1,21 @@
+{
+  "name": "CAU二手集市",
+  "appid": "__UNI__CAU_USED_GOODS",
+  "description": "中国农业大学校园二手交易平台",
+  "versionName": "0.1.0",
+  "versionCode": "100",
+  "transformPx": false,
+  "vueVersion": "3",
+  "mp-weixin": {
+    "appid": "",
+    "setting": {
+      "urlCheck": false
+    },
+    "usingComponents": true
+  },
+  "h5": {
+    "router": {
+      "mode": "hash"
+    }
+  }
+}
