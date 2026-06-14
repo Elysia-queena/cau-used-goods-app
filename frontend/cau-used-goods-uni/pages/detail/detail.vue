@@ -1,19 +1,24 @@
 <template>
   <view v-if="product" class="page">
-    <swiper v-if="product.images && product.images.length" class="gallery" indicator-dots circular>
-      <swiper-item v-for="image in product.images" :key="image">
-        <image class="gallery-image" :src="image" mode="aspectFill" />
+    <swiper v-if="visibleImages.length" class="gallery" indicator-dots circular>
+      <swiper-item v-for="image in visibleImages" :key="image">
+        <image class="gallery-image" :src="image" mode="aspectFill" @error="markImageFailed(image)" />
       </swiper-item>
     </swiper>
-    <view v-else class="gallery placeholder">暂无图片</view>
+    <view v-else class="gallery placeholder">图片未找到</view>
 
     <view class="card">
       <view class="price-line">
-        <text class="price">¥{{ product.priceText }}</text>
+        <text class="price">￥{{ product.priceText }}</text>
         <text class="status">{{ statusText }}</text>
       </view>
       <view class="title">{{ product.title }}</view>
-      <view class="meta">{{ product.conditionText }} · {{ product.viewCount || 0 }} 次浏览 · {{ product.timeText }}</view>
+      <view class="meta">
+        <text>{{ product.conditionText }}</text>
+        <text>{{ product.viewCount || 0 }} 浏览</text>
+        <text>{{ favoriteCount }} 收藏</text>
+        <text>{{ product.timeText }}</text>
+      </view>
     </view>
 
     <view class="card">
@@ -21,25 +26,20 @@
       <view class="description">{{ product.description || '卖家暂未填写描述' }}</view>
     </view>
 
-    <view class="card">
-      <view class="section-title">面交信息</view>
-      <view class="description">建议地点：{{ product.meetLocation || '预约后协商' }}</view>
-      <view class="privacy">为保护隐私，联系方式仅在预约进入待面交后向交易双方展示。</view>
-    </view>
-
     <view class="card seller">
       <view class="avatar">{{ sellerAvatarText }}</view>
       <view>
         <view class="seller-name">{{ sellerName }}</view>
-        <view class="meta">{{ product.seller?.college || '中国农业大学' }}</view>
+        <view class="meta single">{{ product.seller?.college || '中国农业大学' }}</view>
       </view>
     </view>
 
     <view class="bottom">
-      <button class="minor" @click="toggleFavorite">{{ favoriteText }}</button>
-      <button class="minor report" @click="report">举报</button>
+      <button class="icon-button favorite" :class="{ active: isFavorite }" @click="toggleFavorite">{{ isFavorite ? '★' : '☆' }}</button>
+      <button class="icon-button report" @click="report">!</button>
+      <button class="chat" :disabled="product.status !== 'ON_SALE'" @click="chat">聊一聊</button>
       <button class="primary" :disabled="product.status !== 'ON_SALE'" @click="reserve">
-        {{ product.status === 'ON_SALE' ? '提交预约' : statusText }}
+        {{ isOwnProduct ? '自己的商品' : (product.status === 'ON_SALE' ? '提交预约' : statusText) }}
       </button>
     </view>
   </view>
@@ -59,21 +59,50 @@ import {
   listCategories,
   removeFavorite
 } from '../../api/product'
+import { createOrGetConversation } from '../../api/chat'
 import { buildCategoryMap, formatProduct, getStatusText } from '../../utils/product-format'
-import { getToken, isVerifiedUser } from '../../utils/auth'
+import { getToken, getUser, isVerifiedUser } from '../../utils/auth'
 import { navigate } from '../../utils/navigation'
 import { displayUserName, isBannedUserStatus, isCanceledUserStatus } from '../../utils/user-format'
 
 const product = ref(null)
 const isFavorite = ref(false)
+const failedImages = ref([])
 
 const statusText = computed(() => getStatusText(product.value?.status))
-const favoriteText = computed(() => isFavorite.value ? '已收藏' : '收藏')
-const sellerName = computed(() => displayUserName(product.value?.seller || {}, 'CAU 同学'))
+const favoriteCount = computed(() => Number(product.value?.favoriteCount || product.value?.favorite_count || 0))
+const visibleImages = computed(() => {
+  const images = product.value?.images || []
+  return images.filter((image) => !failedImages.value.includes(image))
+})
+const currentUserId = computed(() => Number(getUser()?.id || getUser()?.userId || 0))
+const currentUserOpenid = computed(() => getUser()?.openid || '')
+const sellerId = computed(() => Number(
+  product.value?.sellerId ||
+  product.value?.seller_id ||
+  product.value?.seller?.id ||
+  product.value?.seller?.userId ||
+  0
+))
+const sellerOpenid = computed(() => product.value?.sellerOpenid || product.value?.seller_openid || product.value?.seller?.openid || '')
+const isOwnProduct = computed(() => {
+  const sameId = currentUserId.value > 0 && sellerId.value > 0 && currentUserId.value === sellerId.value
+  const sameOpenid = currentUserOpenid.value && sellerOpenid.value && currentUserOpenid.value === sellerOpenid.value
+  return sameId || sameOpenid
+})
+const sellerName = computed(() => {
+  const seller = product.value?.seller || {}
+  return displayUserName({
+    ...seller,
+    nickname: seller.nickname || product.value?.sellerNickname || product.value?.seller_nickname || product.value?.sellerName || product.value?.seller_name,
+    realName: seller.realName || product.value?.sellerRealName || product.value?.seller_real_name,
+    status: seller.accountStatus || seller.account_status || product.value?.sellerAccountStatus || product.value?.seller_account_status
+  }, 'CAU 同学')
+})
 const sellerAvatarText = computed(() => {
   const status = product.value?.seller?.accountStatus || product.value?.seller?.account_status || product.value?.seller?.status
-  if (isBannedUserStatus(status) || isCanceledUserStatus(status)) return '账'
-  return (sellerName.value || '卖').slice(0, 1)
+  if (isBannedUserStatus(status) || isCanceledUserStatus(status)) return '封'
+  return (sellerName.value || '同').slice(0, 1)
 })
 
 const ensureVerified = () => {
@@ -90,17 +119,31 @@ const ensureVerified = () => {
   return true
 }
 
+const adjustFavoriteCount = (delta) => {
+  const current = favoriteCount.value
+  product.value.favoriteCount = Math.max(0, current + delta)
+}
+
+const markImageFailed = (image) => {
+  if (!failedImages.value.includes(image)) {
+    failedImages.value = failedImages.value.concat(image)
+  }
+}
+
 const toggleFavorite = async () => {
   if (!ensureVerified()) return
 
   try {
     if (isFavorite.value) {
       await removeFavorite(product.value.id)
+      isFavorite.value = false
+      adjustFavoriteCount(-1)
     } else {
       await addFavorite(product.value.id)
+      isFavorite.value = true
+      adjustFavoriteCount(1)
     }
 
-    isFavorite.value = !isFavorite.value
     uni.showToast({ title: isFavorite.value ? '收藏成功' : '已取消收藏', icon: 'success' })
   } catch (error) {
     uni.showToast({ title: error.message || '收藏操作失败', icon: 'none' })
@@ -109,12 +152,36 @@ const toggleFavorite = async () => {
 
 const reserve = () => {
   if (!ensureVerified() || !product.value?.id) return
+  if (isOwnProduct.value) {
+    uni.showToast({ title: '这是你自己的商品', icon: 'none' })
+    return
+  }
   navigate('/pages/order/appointment', { productId: product.value.id })
 }
 
 const report = () => {
   if (!ensureVerified() || !product.value?.id) return
   navigate('/pages/interaction/report', { targetType: 'PRODUCT', targetId: product.value.id })
+}
+
+const chat = async () => {
+  if (!ensureVerified() || !product.value?.id) return
+  if (isOwnProduct.value) {
+    uni.showToast({ title: '这是你自己的商品', icon: 'none' })
+    return
+  }
+  try {
+    const conversation = await createOrGetConversation(product.value.id)
+    const currentUserId = Number(getUser()?.id || getUser()?.userId || 0)
+    const targetUserId = Number(conversation.buyerId) === currentUserId ? conversation.sellerId : conversation.buyerId
+    navigate('/pages/chat/chat', {
+      conversationId: conversation.id,
+      title: product.value.title,
+      targetUserId
+    })
+  } catch (error) {
+    uni.showToast({ title: error.message || '暂时无法发起私信', icon: 'none' })
+  }
 }
 
 onLoad(async ({ id }) => {
@@ -130,11 +197,20 @@ onLoad(async ({ id }) => {
     ])
 
     product.value = formatProduct(detail, buildCategoryMap(categories))
+    uni.setStorageSync(`product-detail-cache-${id}`, product.value)
+    failedImages.value = []
 
     if (getToken()) {
       isFavorite.value = (await checkFavorite(id)).favorited
     }
   } catch (error) {
+    const cached = uni.getStorageSync(`product-detail-cache-${id}`)
+    if (cached) {
+      product.value = cached
+      failedImages.value = []
+      uni.showToast({ title: '商品已被预约，显示最近一次详情', icon: 'none' })
+      return
+    }
     uni.showToast({ title: error.message || '商品加载失败', icon: 'none' })
   }
 })
@@ -196,9 +272,16 @@ onLoad(async ({ id }) => {
 }
 
 .meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx 18rpx;
   margin-top: 14rpx;
   color: #89938f;
   font-size: 23rpx;
+}
+
+.meta.single {
+  display: block;
 }
 
 .section-title,
@@ -206,16 +289,10 @@ onLoad(async ({ id }) => {
   font-weight: 700;
 }
 
-.description,
-.privacy {
+.description {
   margin-top: 16rpx;
   color: #58645f;
   line-height: 1.7;
-}
-
-.privacy {
-  color: #9a7745;
-  font-size: 23rpx;
 }
 
 .seller {
@@ -241,12 +318,13 @@ onLoad(async ({ id }) => {
   bottom: 0;
   left: 0;
   display: flex;
-  gap: 14rpx;
+  gap: 12rpx;
   padding: 16rpx 20rpx calc(16rpx + env(safe-area-inset-bottom));
   background: #fff;
 }
 
-.minor,
+.icon-button,
+.chat,
 .primary {
   height: 74rpx;
   border-radius: 999rpx;
@@ -254,14 +332,21 @@ onLoad(async ({ id }) => {
   line-height: 74rpx;
 }
 
-.minor {
-  width: 132rpx;
+.icon-button {
+  width: 74rpx;
+  padding: 0;
   background: #edf4f1;
   color: #23734f;
+  font-size: 34rpx;
 }
 
-.report {
-  color: #b85d45;
+.favorite.active { color: #f5b301; }
+.report { color: #d64545; font-weight: 800; }
+
+.chat {
+  width: 138rpx;
+  background: #fff6e9;
+  color: #9a6a1d;
 }
 
 .primary {
@@ -270,7 +355,8 @@ onLoad(async ({ id }) => {
   color: #fff;
 }
 
-.primary[disabled] {
+.primary[disabled],
+.chat[disabled] {
   background: #b8c5c0;
   color: #fff;
 }

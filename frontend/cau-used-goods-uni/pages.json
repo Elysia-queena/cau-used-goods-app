@@ -31,6 +31,12 @@
       }
     },
     {
+      "path": "pages/chat/chat",
+      "style": {
+        "navigationBarTitleText": "聊一聊"
+      }
+    },
+    {
       "path": "pages/publish/publish",
       "style": {
         "navigationBarTitleText": "发布商品"
