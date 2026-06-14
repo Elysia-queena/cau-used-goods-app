@@ -88,6 +88,20 @@ func (h *Handler) PublicProfile(c *gin.Context) {
 	response.Success(c, item)
 }
 
+func (h *Handler) PublicHomepage(c *gin.Context) {
+	userID, ok := parseUserIDParam(c)
+	if !ok {
+		return
+	}
+	page, pageSize := parsePage(c)
+	item, err := h.service.PublicHomepage(c.Request.Context(), userID, page, pageSize)
+	if err != nil {
+		writeUserError(c, err)
+		return
+	}
+	response.Success(c, item)
+}
+
 func (h *Handler) Restriction(c *gin.Context) {
 	userID, ok := middleware.CurrentUserID(c)
 	if !ok {

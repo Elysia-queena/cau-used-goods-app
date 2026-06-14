@@ -11,5 +11,7 @@ func RegisterRoutes(r *gin.Engine, handler *Handler, authMiddleware, readableMid
 		group.GET("/:id", handler.GetByID)
 		group.PUT("/read-all", handler.MarkAllRead)
 		group.PUT("/:id/read", handler.MarkRead)
+		group.DELETE("/:id", handler.Delete)
+		group.DELETE("", handler.DeleteAll)
 	}
 }

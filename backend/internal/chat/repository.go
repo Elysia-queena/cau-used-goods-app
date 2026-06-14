@@ -75,7 +75,8 @@ func (r *Repository) ListConversations(ctx context.Context, userID uint64, page,
 	if err := r.db.QueryRowContext(ctx, `
 		SELECT COUNT(*)
 		FROM chat_conversations
-		WHERE buyer_id = ? OR seller_id = ?
+		WHERE (buyer_id = ? AND buyer_hidden_at IS NULL)
+		   OR (seller_id = ? AND seller_hidden_at IS NULL)
 	`, userID, userID).Scan(&total); err != nil {
 		return nil, 0, fmt.Errorf("count conversations: %w", err)
 	}
@@ -92,7 +93,8 @@ func (r *Repository) ListConversations(ctx context.Context, userID uint64, page,
 		INNER JOIN products p ON p.id = c.product_id
 		LEFT JOIN product_images pi ON pi.product_id = c.product_id AND pi.sort_order = 0
 		LEFT JOIN users u ON u.id = CASE WHEN c.buyer_id = ? THEN c.seller_id ELSE c.buyer_id END
-		WHERE c.buyer_id = ? OR c.seller_id = ?
+		WHERE (c.buyer_id = ? AND c.buyer_hidden_at IS NULL)
+		   OR (c.seller_id = ? AND c.seller_hidden_at IS NULL)
 		ORDER BY COALESCE(c.last_message_time, c.update_time) DESC, c.id DESC
 		LIMIT ? OFFSET ?
 	`
@@ -193,15 +195,17 @@ func (r *Repository) CreateMessage(ctx context.Context, conversation *Conversati
 	messageID := uint64(id)
 
 	unreadColumn := "seller_unread_count"
+	hiddenColumn := "seller_hidden_at"
 	if receiverID == conversation.BuyerID {
 		unreadColumn = "buyer_unread_count"
+		hiddenColumn = "buyer_hidden_at"
 	}
 	updateQuery := fmt.Sprintf(`
 		UPDATE chat_conversations
 		SET last_message_id = ?, last_message_content = ?, last_message_time = NOW(),
-			%s = %s + 1, update_time = CURRENT_TIMESTAMP
+			%s = %s + 1, %s = NULL, update_time = CURRENT_TIMESTAMP
 		WHERE id = ?
-	`, unreadColumn, unreadColumn)
+	`, unreadColumn, unreadColumn, hiddenColumn)
 	if _, err := tx.ExecContext(ctx, updateQuery, messageID, content, conversation.ID); err != nil {
 		return nil, fmt.Errorf("update conversation after message: %w", err)
 	}
@@ -269,6 +273,40 @@ func (r *Repository) MarkRead(ctx context.Context, conversation *Conversation, u
 		return 0, fmt.Errorf("commit mark read tx: %w", err)
 	}
 	return affected, nil
+}
+
+func (r *Repository) HideConversationForUser(ctx context.Context, conversation *Conversation, userID uint64) error {
+	hiddenColumn := "seller_hidden_at"
+	unreadColumn := "seller_unread_count"
+	if userID == conversation.BuyerID {
+		hiddenColumn = "buyer_hidden_at"
+		unreadColumn = "buyer_unread_count"
+	}
+	query := fmt.Sprintf(`
+		UPDATE chat_conversations
+		SET %s = NOW(), %s = 0, update_time = CURRENT_TIMESTAMP
+		WHERE id = ?
+	`, hiddenColumn, unreadColumn)
+	if _, err := r.db.ExecContext(ctx, query, conversation.ID); err != nil {
+		return fmt.Errorf("hide conversation: %w", err)
+	}
+	return nil
+}
+
+func (r *Repository) ShowConversationForUser(ctx context.Context, conversation *Conversation, userID uint64) error {
+	hiddenColumn := "seller_hidden_at"
+	if userID == conversation.BuyerID {
+		hiddenColumn = "buyer_hidden_at"
+	}
+	query := fmt.Sprintf(`
+		UPDATE chat_conversations
+		SET %s = NULL, update_time = CURRENT_TIMESTAMP
+		WHERE id = ?
+	`, hiddenColumn)
+	if _, err := r.db.ExecContext(ctx, query, conversation.ID); err != nil {
+		return fmt.Errorf("show conversation: %w", err)
+	}
+	return nil
 }
 
 func scanConversation(row *sql.Row) (*Conversation, error) {

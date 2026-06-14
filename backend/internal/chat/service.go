@@ -39,7 +39,7 @@ func (s *Service) CreateOrGetConversation(ctx context.Context, input CreateConve
 	if product.SellerID == input.UserID {
 		return nil, fmt.Errorf("cannot chat with yourself")
 	}
-	if product.Status == "OFF_SHELF" || product.Status == "SOLD" || product.Status == "DELETED" {
+	if product.Status == "LOCKED" || product.Status == "OFF_SHELF" || product.Status == "SOLD" || product.Status == "DELETED" {
 		return nil, fmt.Errorf("product not available for chat")
 	}
 
@@ -48,6 +48,9 @@ func (s *Service) CreateOrGetConversation(ctx context.Context, input CreateConve
 		return nil, err
 	}
 	if conversation != nil {
+		if err := s.repo.ShowConversationForUser(ctx, conversation, input.UserID); err != nil {
+			return nil, err
+		}
 		return conversation, nil
 	}
 
@@ -98,6 +101,14 @@ func (s *Service) MarkRead(ctx context.Context, conversationID, userID uint64) (
 		return 0, err
 	}
 	return s.repo.MarkRead(ctx, conversation, userID)
+}
+
+func (s *Service) HideConversation(ctx context.Context, conversationID, userID uint64) error {
+	conversation, err := s.getConversationForUser(ctx, conversationID, userID)
+	if err != nil {
+		return err
+	}
+	return s.repo.HideConversationForUser(ctx, conversation, userID)
 }
 
 func (s *Service) getConversationForUser(ctx context.Context, conversationID, userID uint64) (*Conversation, error) {

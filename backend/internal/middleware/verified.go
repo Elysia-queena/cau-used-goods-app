@@ -35,8 +35,13 @@ func Verified(db *sql.DB) gin.HandlerFunc {
 			return
 		}
 
-		if authStatus != "VERIFIED" || accountStatus != "NORMAL" {
+		if authStatus != "VERIFIED" {
 			response.Error(c, http.StatusForbidden, response.CodeForbidden, "student verification required")
+			c.Abort()
+			return
+		}
+		if accountStatus != "NORMAL" {
+			response.Error(c, http.StatusForbidden, response.CodeForbidden, "current account status is restricted")
 			c.Abort()
 			return
 		}

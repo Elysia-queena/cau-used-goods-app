@@ -10,6 +10,7 @@ GET /chat/conversations
 GET /chat/conversations/:id/messages
 POST /chat/conversations/:id/messages
 PUT /chat/conversations/:id/read
+DELETE /chat/conversations/:id
 ```
 
 模块代码位置：
@@ -56,6 +57,13 @@ backend/scripts/sql/schema.sql
 ```text
 chat_conversations
 chat_messages
+```
+
+`chat_conversations` 需要包含用户侧隐藏字段：
+
+```text
+buyer_hidden_at
+seller_hidden_at
 ```
 
 聊天接口使用学生认证中间件，测试用户必须满足：
@@ -362,6 +370,45 @@ Invoke-RestMethod `
 - 买家能看到买家和卖家的完整消息。
 - 买家标记已读后，买家的 `unreadCount` 变为 0。
 
+### 4.9 买家删除/隐藏会话
+
+```powershell
+Invoke-RestMethod `
+  -Method Delete `
+  -Uri "$baseUrl/chat/conversations/$conversationId" `
+  -Headers $buyerHeaders
+```
+
+预期：
+
+- 返回 `deleted = true`。
+- 数据库中 `buyer_hidden_at` 不为空。
+- `seller_hidden_at` 仍为空。
+- `buyer_unread_count = 0`。
+- `chat_messages` 中原聊天消息仍然存在。
+- 买家查询会话列表时不再显示该会话。
+- 卖家查询会话列表时仍可看到该会话。
+
+### 4.10 隐藏会话收到新消息后重新显示
+
+卖家继续发送消息：
+
+```powershell
+Invoke-RestMethod `
+  -Method Post `
+  -Uri "$baseUrl/chat/conversations/$conversationId/messages" `
+  -Headers $sellerHeaders `
+  -ContentType "application/json" `
+  -Body '{"content":"我又补充一条消息。"}'
+```
+
+预期：
+
+- 发送成功。
+- 数据库中 `buyer_hidden_at` 被清空。
+- 买家再次查询会话列表时重新显示该会话。
+- 买家未读数增加。
+
 ## 五、异常场景测试
 
 ### 5.1 未登录访问
@@ -573,7 +620,8 @@ conversation not found
 
 ```sql
 SELECT id, product_id, buyer_id, seller_id, last_message_content,
-       buyer_unread_count, seller_unread_count, status
+       buyer_unread_count, seller_unread_count,
+       buyer_hidden_at, seller_hidden_at, status
 FROM chat_conversations
 WHERE id = 会话ID;
 ```
@@ -585,6 +633,7 @@ WHERE id = 会话ID;
 - `seller_id` 正确。
 - `last_message_content` 为最后一次发送的内容。
 - 未读数字段随已读操作变化。
+- 当前用户删除会话后，对应 `hidden_at` 字段变化。
 - `status = ACTIVE`。
 
 ### 6.2 检查消息表
@@ -635,6 +684,7 @@ GET  {{baseUrl}}/chat/conversations?page=1&pageSize=20
 GET  {{baseUrl}}/chat/conversations/{{conversationId}}/messages?page=1&pageSize=30
 POST {{baseUrl}}/chat/conversations/{{conversationId}}/messages
 PUT  {{baseUrl}}/chat/conversations/{{conversationId}}/read
+DELETE {{baseUrl}}/chat/conversations/{{conversationId}}
 ```
 
 ## 八、测试结论模板
@@ -648,6 +698,7 @@ PUT  {{baseUrl}}/chat/conversations/{{conversationId}}/read
 - GET /chat/conversations/:id/messages
 - POST /chat/conversations/:id/messages
 - PUT /chat/conversations/:id/read
+- DELETE /chat/conversations/:id
 
 测试结果：
 - 登录鉴权正常
@@ -659,6 +710,8 @@ PUT  {{baseUrl}}/chat/conversations/{{conversationId}}/read
 - 会话列表展示最后消息和未读数正常
 - 消息列表查询正常
 - 标记已读正常
+- 删除会话只隐藏当前用户一侧，不物理删除会话和消息
+- 隐藏会话收到新消息后可以重新出现在接收方列表
 - 非会话参与人访问被拦截
 - 空消息和非法参数处理正常
 

@@ -133,3 +133,45 @@ func (h *Handler) MarkAllRead(c *gin.Context) {
 		"count": count,
 	})
 }
+
+func (h *Handler) Delete(c *gin.Context) {
+	userID, ok := middleware.CurrentUserID(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, response.CodeUnauthorized, "unauthorized")
+		return
+	}
+
+	messageID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil || messageID == 0 {
+		response.Error(c, http.StatusBadRequest, response.CodeBadRequest, "invalid message id")
+		return
+	}
+
+	if err := h.service.Delete(c.Request.Context(), userID, messageID); err != nil {
+		if errors.Is(err, ErrMessageNotFound) {
+			response.Error(c, http.StatusNotFound, response.CodeNotFound, "message not found")
+			return
+		}
+		response.Error(c, http.StatusInternalServerError, response.CodeInternal, err.Error())
+		return
+	}
+	response.Success(c, gin.H{"deleted": true})
+}
+
+func (h *Handler) DeleteAll(c *gin.Context) {
+	userID, ok := middleware.CurrentUserID(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, response.CodeUnauthorized, "unauthorized")
+		return
+	}
+
+	count, err := h.service.DeleteAll(c.Request.Context(), userID)
+	if err != nil {
+		response.Error(c, http.StatusInternalServerError, response.CodeInternal, err.Error())
+		return
+	}
+	response.Success(c, gin.H{
+		"deleted": true,
+		"count":   count,
+	})
+}
