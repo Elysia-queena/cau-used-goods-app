@@ -31,11 +31,27 @@ function normalizeProduct(item = {}) {
 }
 
 function normalizeOrder(item = {}) {
+  const seller = item.seller || {}
+  const buyer = item.buyer || {}
+  const sellerId = item.sellerId || item.seller_id || seller.id || seller.userId || item.sellerUserId || item.seller_user_id
+  const buyerId = item.buyerId || item.buyer_id || buyer.id || buyer.userId || item.buyerUserId || item.buyer_user_id
   return {
     ...item,
     id: String(item.id),
-    sellerName: displayRelatedUserName(item, 'seller', '卖家'),
-    buyerName: displayRelatedUserName(item, 'buyer', '买家'),
+    sellerId,
+    buyerId,
+    sellerName: displayRelatedUserName({
+      ...item,
+      sellerNickname: item.sellerNickname || item.seller_nickname || seller.nickname || seller.realName || seller.name,
+      sellerAccountStatus: item.sellerAccountStatus || item.seller_account_status || seller.accountStatus || seller.account_status || seller.status
+    }, 'seller', '卖家'),
+    buyerName: displayRelatedUserName({
+      ...item,
+      buyerNickname: item.buyerNickname || item.buyer_nickname || buyer.nickname || buyer.realName || buyer.name,
+      buyerAccountStatus: item.buyerAccountStatus || item.buyer_account_status || buyer.accountStatus || buyer.account_status || buyer.status
+    }, 'buyer', '买家'),
+    sellerAvatarUrl: absoluteImage(item.sellerAvatarUrl || item.seller_avatar_url || seller.avatarUrl || seller.avatar_url),
+    buyerAvatarUrl: absoluteImage(item.buyerAvatarUrl || item.buyer_avatar_url || buyer.avatarUrl || buyer.avatar_url),
     createdAt: formatDateTime(item.createdAt || item.createTime),
     meetTime: formatDateTime(item.meetTime),
     expireTime: formatDateTime(item.expireTime),
@@ -96,4 +112,3 @@ export const tradeService = {
     createdAt: formatDateTime(item.createTime || item.createdAt)
   }))
 }
-

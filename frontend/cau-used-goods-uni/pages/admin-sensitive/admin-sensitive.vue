@@ -60,6 +60,10 @@ const load = async () => {
   try {
     const result = await getSensitiveWords()
     words.value = result?.items || []
+    uni.setStorageSync('sensitive-words-cache', words.value
+      .filter((item) => item.status !== 'DISABLED')
+      .map((item) => String(item.word || '').trim())
+      .filter(Boolean))
   } catch (error) {
     uni.showToast({ title: error.message || '敏感词加载失败', icon: 'none' })
   }
