@@ -52,6 +52,19 @@ type PublicProfile struct {
 	TradeAvailable bool    `json:"tradeAvailable"`
 }
 
+type PublicHomepageStats struct {
+	OnSaleProductCount  int      `json:"onSaleProductCount"`
+	CompletedOrderCount int      `json:"completedOrderCount"`
+	ReviewReceivedCount int      `json:"reviewReceivedCount"`
+	AverageRating       *float64 `json:"averageRating,omitempty"`
+}
+
+type PublicHomepage struct {
+	Profile  *PublicProfile               `json:"profile"`
+	Stats    PublicHomepageStats          `json:"stats"`
+	Products PagedResult[UserProductItem] `json:"products"`
+}
+
 type Restriction struct {
 	AccountStatus string  `json:"accountStatus"`
 	Reason        *string `json:"reason,omitempty"`

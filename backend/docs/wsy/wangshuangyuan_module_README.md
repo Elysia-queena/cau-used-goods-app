@@ -95,6 +95,8 @@ GET /messages/unread-count
 GET /messages/:id
 PUT /messages/:id/read
 PUT /messages/read-all
+DELETE /messages/:id
+DELETE /messages
 ```
 
 已实现内部能力：
@@ -107,6 +109,8 @@ message.Service.Create(ctx, input)
 
 - 用户只能查看、读取自己的消息。
 - 查询他人消息或标记他人消息已读时，统一返回 `message not found`。
+- 删除消息采用物理删除，只删除当前用户作为 `receiver_id` 的收件箱记录。
+- `messages` 不作为业务审计表，订单、举报、申诉和后台操作事实仍以业务表和 `admin_logs` 为准。
 - `Create` 不暴露为前端接口，供订单、举报、公告等后端模块创建站内消息。
 
 ### 3.2 管理员操作日志模块

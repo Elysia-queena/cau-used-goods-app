@@ -9,6 +9,7 @@ func RegisterRoutes(r *gin.Engine, handler *Handler, authMiddleware, readableMid
 	group.GET("/me", handler.Me)
 	group.GET("/me/restriction", handler.Restriction)
 	group.GET("/:id/public", handler.PublicProfile)
+	group.GET("/:id/homepage", handler.PublicHomepage)
 	group.PUT("/profile", normalMiddleware, handler.UpdateProfile)
 	group.POST("/avatar", normalMiddleware, handler.UploadAvatar)
 	group.POST("/student-verify", normalMiddleware, handler.SubmitStudentVerification)

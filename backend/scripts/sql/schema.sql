@@ -303,6 +303,8 @@ CREATE TABLE IF NOT EXISTS `chat_conversations` (
   `last_message_time` DATETIME NULL COMMENT '最后一条消息时间',
   `buyer_unread_count` INT NOT NULL DEFAULT 0 COMMENT '买家未读数',
   `seller_unread_count` INT NOT NULL DEFAULT 0 COMMENT '卖家未读数',
+  `buyer_hidden_at` DATETIME NULL COMMENT '买家隐藏会话时间，NULL表示买家聊天列表可见',
+  `seller_hidden_at` DATETIME NULL COMMENT '卖家隐藏会话时间，NULL表示卖家聊天列表可见',
   `status` VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' COMMENT 'ACTIVE / CLOSED',
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',

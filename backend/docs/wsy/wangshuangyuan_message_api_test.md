@@ -12,6 +12,8 @@ GET /messages/unread-count
 GET /messages/:id
 PUT /messages/:id/read
 PUT /messages/read-all
+DELETE /messages/:id
+DELETE /messages
 ```
 
 模块代码位置：
@@ -51,6 +53,13 @@ backend/scripts/sql/schema.sql
 users
 messages
 ```
+
+删除策略：
+
+- `messages` 表作为用户站内通知收件箱，不承担业务审计职责。
+- 用户删除消息时采用物理删除，即删除当前用户作为 `receiver_id` 的消息行。
+- 订单、举报、申诉和后台操作的业务事实仍保存在对应业务表和 `admin_logs` 中，不依赖 `messages` 保留。
+- 删除接口只能删除当前用户自己的收件消息，不能删除他人消息。
 
 ## 三、PowerShell 测试命令
 
@@ -239,6 +248,38 @@ Invoke-RestMethod `
 - `data.read = true`
 - `data.count` 表示本次被更新为已读的消息数量。
 
+### 3.11 删除单条消息
+
+```powershell
+Invoke-RestMethod `
+  -Method Delete `
+  -Uri "$baseUrl/messages/1" `
+  -Headers $headers
+```
+
+预期：
+
+- 只允许删除 `receiver_id = 当前用户` 的消息。
+- 删除方式为物理删除，`messages` 表中该行不存在。
+- 删除成功返回 `deleted = true`。
+- 删除后再次查询该消息返回 `message not found`。
+
+### 3.12 清空当前用户消息
+
+```powershell
+Invoke-RestMethod `
+  -Method Delete `
+  -Uri "$baseUrl/messages" `
+  -Headers $headers
+```
+
+预期：
+
+- 只物理删除当前用户作为 `receiver_id` 的消息。
+- 不影响其他用户消息。
+- 不影响订单、举报、申诉、公告、后台日志等业务数据。
+- 返回 `deleted = true` 和本次删除数量。
+
 再查询未读数量：
 
 ```powershell
@@ -398,6 +439,8 @@ GET  {{baseUrl}}/messages/unread-count
 GET  {{baseUrl}}/messages/:id
 PUT  {{baseUrl}}/messages/:id/read
 PUT  {{baseUrl}}/messages/read-all
+DELETE {{baseUrl}}/messages/:id
+DELETE {{baseUrl}}/messages
 ```
 
 ## 六、测试结论模板
@@ -413,6 +456,8 @@ PUT  {{baseUrl}}/messages/read-all
 - GET /messages/:id
 - PUT /messages/:id/read
 - PUT /messages/read-all
+- DELETE /messages/:id
+- DELETE /messages
 
 测试结果：
 - 登录鉴权正常
@@ -422,6 +467,8 @@ PUT  {{baseUrl}}/messages/read-all
 - 未读数量统计正常
 - 单条消息标记已读正常
 - 全部消息标记已读正常
+- 单条消息物理删除正常
+- 当前用户消息批量物理删除正常
 - 非本人消息不可查看和操作
 - 未登录访问被拦截
 - 非法参数和不存在消息处理正常

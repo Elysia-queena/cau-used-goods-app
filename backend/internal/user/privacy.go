@@ -28,6 +28,69 @@ func (r *Repository) FindPublicProfile(ctx context.Context, userID uint64) (*Pub
 	return &item, nil
 }
 
+func (r *Repository) PublicHomepageStats(ctx context.Context, userID uint64) (PublicHomepageStats, error) {
+	var stats PublicHomepageStats
+	if err := r.db.QueryRowContext(ctx, `
+		SELECT COUNT(*)
+		FROM products
+		WHERE seller_id = ? AND status = 'ON_SALE' AND is_deleted = 0
+	`, userID).Scan(&stats.OnSaleProductCount); err != nil {
+		return PublicHomepageStats{}, fmt.Errorf("count public homepage products: %w", err)
+	}
+	if err := r.db.QueryRowContext(ctx, `
+		SELECT COUNT(*)
+		FROM orders
+		WHERE seller_id = ? AND status = 'COMPLETED'
+	`, userID).Scan(&stats.CompletedOrderCount); err != nil {
+		return PublicHomepageStats{}, fmt.Errorf("count public homepage completed orders: %w", err)
+	}
+
+	var averageRating sql.NullFloat64
+	if err := r.db.QueryRowContext(ctx, `
+		SELECT COUNT(*), AVG(rating)
+		FROM reviews
+		WHERE seller_id = ? AND status = 'NORMAL' AND is_deleted = 0
+	`, userID).Scan(&stats.ReviewReceivedCount, &averageRating); err != nil {
+		return PublicHomepageStats{}, fmt.Errorf("count public homepage reviews: %w", err)
+	}
+	if averageRating.Valid {
+		stats.AverageRating = &averageRating.Float64
+	}
+	return stats, nil
+}
+
+func (r *Repository) ListPublicHomepageProducts(ctx context.Context, userID uint64, page, pageSize int) ([]UserProductItem, int, error) {
+	const whereSQL = " WHERE p.seller_id = ? AND p.status = 'ON_SALE' AND p.is_deleted = 0"
+	var total int
+	if err := r.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM products p"+whereSQL, userID).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count public homepage products: %w", err)
+	}
+	rows, err := r.db.QueryContext(ctx, `
+SELECT p.id, p.title, p.price, p.status, p.view_count, p.favorite_count,
+       DATE_FORMAT(p.create_time, '%Y-%m-%d %H:%i:%s'),
+       (SELECT image_url FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.sort_order, pi.id LIMIT 1)
+FROM products p`+whereSQL+`
+ORDER BY p.create_time DESC, p.id DESC
+LIMIT ? OFFSET ?`, userID, pageSize, (page-1)*pageSize)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list public homepage products: %w", err)
+	}
+	defer rows.Close()
+
+	items := make([]UserProductItem, 0)
+	for rows.Next() {
+		var item UserProductItem
+		if err := rows.Scan(&item.ID, &item.Title, &item.Price, &item.Status, &item.ViewCount, &item.FavoriteCount, &item.CreateTime, &item.ImageURL); err != nil {
+			return nil, 0, fmt.Errorf("scan public homepage product: %w", err)
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("iterate public homepage products: %w", err)
+	}
+	return items, total, nil
+}
+
 func (r *Repository) FindRestriction(ctx context.Context, userID uint64) (*Restriction, error) {
 	var item Restriction
 	if err := r.db.QueryRowContext(ctx, `SELECT account_status FROM users WHERE id = ? LIMIT 1`, userID).Scan(&item.AccountStatus); err != nil {

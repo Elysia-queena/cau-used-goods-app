@@ -409,6 +409,33 @@ func (s *Service) PublicProfile(ctx context.Context, userID uint64) (*PublicProf
 	return item, nil
 }
 
+func (s *Service) PublicHomepage(ctx context.Context, userID uint64, page, pageSize int) (*PublicHomepage, error) {
+	profile, err := s.PublicProfile(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	page, pageSize = normalizePage(page, pageSize)
+
+	stats, err := s.repo.PublicHomepageStats(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	products, total, err := s.repo.ListPublicHomepageProducts(ctx, userID, page, pageSize)
+	if err != nil {
+		return nil, err
+	}
+	return &PublicHomepage{
+		Profile: profile,
+		Stats:   stats,
+		Products: PagedResult[UserProductItem]{
+			Items:    products,
+			Total:    total,
+			Page:     page,
+			PageSize: pageSize,
+		},
+	}, nil
+}
+
 func (s *Service) Restriction(ctx context.Context, userID uint64) (*Restriction, error) {
 	item, err := s.repo.FindRestriction(ctx, userID)
 	if err != nil {

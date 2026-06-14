@@ -193,6 +193,33 @@ func (r *Repository) MarkAllRead(ctx context.Context, receiverID uint64) (int64,
 	return rowsAffected, nil
 }
 
+func (r *Repository) Delete(ctx context.Context, receiverID, messageID uint64) error {
+	result, err := r.db.ExecContext(ctx, `DELETE FROM messages WHERE id = ? AND receiver_id = ?`, messageID, receiverID)
+	if err != nil {
+		return fmt.Errorf("delete message: %w", err)
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("check delete message result: %w", err)
+	}
+	if rowsAffected == 0 {
+		return ErrMessageNotFound
+	}
+	return nil
+}
+
+func (r *Repository) DeleteAll(ctx context.Context, receiverID uint64) (int64, error) {
+	result, err := r.db.ExecContext(ctx, `DELETE FROM messages WHERE receiver_id = ?`, receiverID)
+	if err != nil {
+		return 0, fmt.Errorf("delete receiver messages: %w", err)
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("check delete receiver messages result: %w", err)
+	}
+	return rowsAffected, nil
+}
+
 type messageScanner interface {
 	Scan(dest ...interface{}) error
 }

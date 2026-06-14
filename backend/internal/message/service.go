@@ -71,6 +71,21 @@ func (s *Service) MarkAllRead(ctx context.Context, receiverID uint64) (int64, er
 	return s.repo.MarkAllRead(ctx, receiverID)
 }
 
+func (s *Service) Delete(ctx context.Context, receiverID, messageID uint64) error {
+	if messageID == 0 {
+		return ErrMessageNotFound
+	}
+	err := s.repo.Delete(ctx, receiverID, messageID)
+	if errors.Is(err, ErrMessageNotFound) {
+		return ErrMessageNotFound
+	}
+	return err
+}
+
+func (s *Service) DeleteAll(ctx context.Context, receiverID uint64) (int64, error) {
+	return s.repo.DeleteAll(ctx, receiverID)
+}
+
 func validateReadStatus(readStatus string) error {
 	if readStatus == "" || readStatus == ReadStatusUnread || readStatus == ReadStatusRead {
 		return nil
