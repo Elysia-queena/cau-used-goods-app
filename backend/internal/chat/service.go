@@ -128,6 +128,14 @@ func (s *Service) getConversationForUser(ctx context.Context, conversationID, us
 	return conversation, nil
 }
 
+func (s *Service) GetConversationProduct(ctx context.Context, conversationID, userID uint64) (*ConversationProduct, error) {
+	conversation, err := s.getConversationForUser(ctx, conversationID, userID)
+	if err != nil {
+		return nil, err
+	}
+	return s.repo.GetConversationProduct(ctx, conversation.ProductID)
+}
+
 func normalizePage(page, pageSize int) (int, int) {
 	if page < 1 {
 		page = 1
