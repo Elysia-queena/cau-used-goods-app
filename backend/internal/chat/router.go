@@ -12,5 +12,6 @@ func RegisterRoutes(r *gin.Engine, handler *Handler, authMiddleware, readableMid
 		group.POST("/conversations/:id/messages", verifiedMiddleware, handler.SendMessage)
 		group.PUT("/conversations/:id/read", handler.MarkRead)
 		group.DELETE("/conversations/:id", handler.HideConversation)
+		group.GET("/conversations/:id/product", handler.GetConversationProduct)
 	}
 }

@@ -309,6 +309,68 @@ func (r *Repository) ShowConversationForUser(ctx context.Context, conversation *
 	return nil
 }
 
+func (r *Repository) GetConversationProduct(ctx context.Context, productID uint64) (*ConversationProduct, error) {
+	var p ConversationProduct
+	var price sql.NullFloat64
+	err := r.db.QueryRowContext(ctx, `
+		SELECT id, title, price, status
+		FROM products
+		WHERE id = ? AND is_deleted = 0
+	`, productID).Scan(&p.ID, &p.Title, &price, &p.Status)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("get conversation product: %w", err)
+	}
+	if price.Valid {
+		p.Price = price.Float64
+	}
+
+	images, err := r.ListProductImages(ctx, productID)
+	if err != nil {
+		return nil, fmt.Errorf("get conversation product images: %w", err)
+	}
+	p.Images = images
+
+	var sellerID uint64
+	err = r.db.QueryRowContext(ctx, `
+		SELECT seller_id
+		FROM products
+		WHERE id = ? AND is_deleted = 0
+	`, productID).Scan(&sellerID)
+	if err != nil {
+		return nil, fmt.Errorf("get conversation product seller: %w", err)
+	}
+	p.SellerID = sellerID
+
+	return &p, nil
+}
+
+func (r *Repository) ListProductImages(ctx context.Context, productID uint64) ([]string, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT image_url
+		FROM product_images
+		WHERE product_id = ?
+		ORDER BY sort_order ASC, id ASC
+	`, productID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	images := make([]string, 0)
+	for rows.Next() {
+		var url string
+		if err := rows.Scan(&url); err != nil {
+			return nil, err
+		}
+		images = append(images, url)
+	}
+
+	return images, rows.Err()
+}
+
 func scanConversation(row *sql.Row) (*Conversation, error) {
 	var item Conversation
 	var lastMessageID sql.NullInt64

@@ -21,6 +21,22 @@ func (r *Repository) Add(ctx context.Context, userID, productID uint64) error {
 	}
 	defer tx.Rollback()
 
+	var sellerID uint64
+	err = tx.QueryRowContext(ctx, `
+		SELECT seller_id
+		FROM products
+		WHERE id = ? AND is_deleted = 0
+	`, productID).Scan(&sellerID)
+	if err == sql.ErrNoRows {
+		return fmt.Errorf("product not found")
+	}
+	if err != nil {
+		return fmt.Errorf("query product seller: %w", err)
+	}
+	if sellerID == userID {
+		return fmt.Errorf("cannot favorite your own product")
+	}
+
 	var isDeleted bool
 	err = tx.QueryRowContext(ctx, `
 		SELECT is_deleted

@@ -342,7 +342,7 @@ func (h *Handler) GetProductByID(c *gin.Context) {
 
 	product, err := h.service.GetProductByID(c.Request.Context(), id)
 	if err != nil {
-		response.Error(c, http.StatusNotFound, response.CodeNotFound, "product not found")
+		response.Error(c, http.StatusNotFound, response.CodeNotFound, "product not available")
 		return
 	}
 
