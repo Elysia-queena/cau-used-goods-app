@@ -385,6 +385,28 @@ func (s *Service) AddProductImages(ctx context.Context, input ProductImagesInput
 	})
 }
 
+type ProductImageDeleteInput struct {
+	ProductID uint64
+	SellerID  uint64
+	ImageID   uint64
+}
+
+func (s *Service) DeleteProductImage(ctx context.Context, input ProductImageDeleteInput) error {
+	return s.repo.DeleteProductImage(ctx, DeleteProductImageInput{
+		ProductID: input.ProductID,
+		SellerID:  input.SellerID,
+		ImageID:   input.ImageID,
+	})
+}
+
+func (s *Service) ReplaceProductImages(ctx context.Context, input ProductImagesInput) error {
+	return s.repo.ReplaceProductImages(ctx, ReplaceProductImagesInput{
+		ProductID: input.ProductID,
+		SellerID:  input.SellerID,
+		Images:    input.Images,
+	})
+}
+
 func (s *Service) checkSensitive(ctx context.Context, title string, description string) error {
 	if s.sensitiveService == nil {
 		return nil

@@ -725,6 +725,96 @@ func (r *Repository) AddProductImages(ctx context.Context, input AddProductImage
 	return tx.Commit()
 }
 
+type DeleteProductImageInput struct {
+	ProductID uint64
+	SellerID  uint64
+	ImageID   uint64
+}
+
+func (r *Repository) DeleteProductImage(ctx context.Context, input DeleteProductImageInput) error {
+	var sellerID uint64
+	var status string
+	err := r.db.QueryRowContext(ctx, `
+		SELECT seller_id, status
+		FROM products
+		WHERE id = ? AND is_deleted = 0
+	`, input.ProductID).Scan(&sellerID, &status)
+	if err != nil {
+		return err
+	}
+
+	if sellerID != input.SellerID {
+		return fmt.Errorf("无权限操作该商品")
+	}
+	if status == "SOLD" || status == "DELETED" {
+		return fmt.Errorf("当前商品状态不允许删除图片")
+	}
+
+	result, err := r.db.ExecContext(ctx, `
+		DELETE FROM product_images
+		WHERE id = ? AND product_id = ?
+	`, input.ImageID, input.ProductID)
+	if err != nil {
+		return err
+	}
+
+	return checkAffected(result)
+}
+
+type ReplaceProductImagesInput struct {
+	ProductID uint64
+	SellerID  uint64
+	Images    []string
+}
+
+func (r *Repository) ReplaceProductImages(ctx context.Context, input ReplaceProductImagesInput) error {
+	if len(input.Images) > 9 {
+		return fmt.Errorf("商品图片最多9张")
+	}
+
+	var sellerID uint64
+	var status string
+	err := r.db.QueryRowContext(ctx, `
+		SELECT seller_id, status
+		FROM products
+		WHERE id = ? AND is_deleted = 0
+	`, input.ProductID).Scan(&sellerID, &status)
+	if err != nil {
+		return err
+	}
+
+	if sellerID != input.SellerID {
+		return fmt.Errorf("无权限操作该商品")
+	}
+	if status == "SOLD" || status == "DELETED" {
+		return fmt.Errorf("当前商品状态不允许替换图片")
+	}
+
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM product_images
+		WHERE product_id = ?
+	`, input.ProductID); err != nil {
+		return err
+	}
+
+	for i, imageURL := range input.Images {
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO product_images (product_id, image_url, sort_order)
+			VALUES (?, ?, ?)
+		`, input.ProductID, imageURL, i); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
 func (r *Repository) LockProduct(ctx context.Context, productID uint64) error {
 	result, err := r.db.ExecContext(ctx, `
 		UPDATE products
