@@ -32,5 +32,7 @@ func RegisterRoutes(r *gin.Engine, handler *Handler, authMiddleware, verifiedMid
 		products.PUT("/:id/status", verifiedMiddleware, handler.UpdateProductStatus)
 		products.POST("/:id/images", verifiedMiddleware, handler.AddProductImages)
 		products.DELETE("/:id", verifiedMiddleware, handler.DeleteProduct)
+		products.DELETE("/:id/images/:imageId", verifiedMiddleware, handler.DeleteProductImage)
+		products.PUT("/:id/images", verifiedMiddleware, handler.ReplaceProductImages)
 	}
 }

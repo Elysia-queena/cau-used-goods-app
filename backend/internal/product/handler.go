@@ -518,6 +518,81 @@ func (h *Handler) AddProductImages(c *gin.Context) {
 	})
 }
 
+func (h *Handler) DeleteProductImage(c *gin.Context) {
+	productID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil || productID == 0 {
+		response.Error(c, http.StatusBadRequest, response.CodeBadRequest, "invalid product id")
+		return
+	}
+
+	imageID, err := strconv.ParseUint(c.Param("imageId"), 10, 64)
+	if err != nil || imageID == 0 {
+		response.Error(c, http.StatusBadRequest, response.CodeBadRequest, "invalid image id")
+		return
+	}
+
+	userID, ok := currentUserID(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, response.CodeUnauthorized, "user not login")
+		return
+	}
+
+	err = h.service.DeleteProductImage(c.Request.Context(), ProductImageDeleteInput{
+		ProductID: productID,
+		SellerID:  userID,
+		ImageID:   imageID,
+	})
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, response.CodeBadRequest, err.Error())
+		return
+	}
+
+	response.Success(c, gin.H{
+		"id":      productID,
+		"imageId": imageID,
+	})
+}
+
+func (h *Handler) ReplaceProductImages(c *gin.Context) {
+	productID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil || productID == 0 {
+		response.Error(c, http.StatusBadRequest, response.CodeBadRequest, "invalid product id")
+		return
+	}
+
+	var req addProductImagesRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, http.StatusBadRequest, response.CodeBadRequest, "invalid request body")
+		return
+	}
+
+	if len(req.Images) > 9 {
+		response.Error(c, http.StatusBadRequest, response.CodeBadRequest, "最多只能上传9张图片")
+		return
+	}
+
+	userID, ok := currentUserID(c)
+	if !ok {
+		response.Error(c, http.StatusUnauthorized, response.CodeUnauthorized, "user not login")
+		return
+	}
+
+	err = h.service.ReplaceProductImages(c.Request.Context(), ProductImagesInput{
+		ProductID: productID,
+		SellerID:  userID,
+		Images:    req.Images,
+	})
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, response.CodeBadRequest, err.Error())
+		return
+	}
+
+	response.Success(c, gin.H{
+		"id":     productID,
+		"images": req.Images,
+	})
+}
+
 func currentUserID(c *gin.Context) (uint64, bool) {
 	value, ok := c.Get(middleware.ContextUserID)
 	if !ok {
