@@ -1,6 +1,6 @@
 import { request, uploadImage } from '../utils/request'
 
-export const getProduct = (id) => request({ url: `/products/${id}`, auth: false })
+export const getProduct = (id) => request({ url: `/products/${id}` })
 export const createAppointment = (data) => request({
   url: '/orders',
   method: 'POST',

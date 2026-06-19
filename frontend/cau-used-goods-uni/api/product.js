@@ -25,8 +25,7 @@ export const listMyProducts = () => request({
 })
 
 export const getProductById = (id) => request({
-  url: `/products/${id}`,
-  auth: false
+  url: `/products/${id}`
 })
 
 export const updateProductStatus = (id, status, reason = '') => request({

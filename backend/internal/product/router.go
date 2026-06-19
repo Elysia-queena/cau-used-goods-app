@@ -2,10 +2,10 @@ package product
 
 import "github.com/gin-gonic/gin"
 
-func RegisterRoutes(r *gin.Engine, handler *Handler, authMiddleware, verifiedMiddleware, adminMiddleware gin.HandlerFunc) {
+func RegisterRoutes(r *gin.Engine, handler *Handler, authMiddleware, optionalAuthMiddleware, verifiedMiddleware, adminMiddleware gin.HandlerFunc) {
 	r.GET("/categories", handler.ListCategories)
 	r.GET("/products", handler.ListProducts)
-	r.GET("/products/:id", handler.GetProductByID)
+	r.GET("/products/:id", optionalAuthMiddleware, handler.GetProductByID)
 
 	adminCategories := r.Group("/admin/categories")
 	adminCategories.Use(authMiddleware, adminMiddleware)
