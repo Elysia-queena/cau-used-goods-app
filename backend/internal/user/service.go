@@ -624,7 +624,43 @@ func (s *Service) ReviewStudentVerification(ctx context.Context, adminID uint64,
 	if err := s.repo.ReviewStudentVerification(ctx, adminID, input.UserID, input.AuthStatus, input.Description, s.admin); err != nil {
 		return nil, err
 	}
+	s.notifyStudentVerificationResult(ctx, adminID, input)
 	return s.StudentVerification(ctx, input.UserID)
+}
+
+func (s *Service) notifyStudentVerificationResult(ctx context.Context, adminID uint64, input ReviewStudentVerificationInput) {
+	if s.messages == nil {
+		return
+	}
+
+	title := "学生认证审核结果"
+	content := buildStudentVerificationResultContent(input.AuthStatus, input.Description)
+
+	relatedType := message.RelatedTypeUser
+	relatedID := input.UserID
+	_, _ = s.messages.Create(ctx, message.CreateMessageInput{
+		ReceiverID:  input.UserID,
+		SenderID:    &adminID,
+		MessageType: message.MessageTypeSystemNotice,
+		Title:       title,
+		Content:     limitRunes(content, 500),
+		RelatedType: &relatedType,
+		RelatedID:   &relatedID,
+	})
+}
+
+func buildStudentVerificationResultContent(authStatus string, description string) string {
+	description = strings.TrimSpace(description)
+	if authStatus == authStatusVerified {
+		if description == "" || description == "学生认证审核通过" {
+			return "你的学生认证已通过，现在可以正常使用发布、收藏、预约和举报等功能。"
+		}
+		return "你的学生认证已通过。" + description
+	}
+	if description == "" {
+		return "你的学生认证未通过，请核对资料后重新提交。"
+	}
+	return "你的学生认证未通过。" + description
 }
 
 func validateStringLength(field string, value string, min int, max int) error {

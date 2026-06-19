@@ -87,6 +87,18 @@ function normalizeMessage(item = {}) {
   }
 }
 
+function normalizeAppeal(item = {}) {
+  return {
+    ...item,
+    id: String(item.id),
+    targetTypeLabel: TARGET_TYPE[item.targetType] || item.targetType,
+    result: item.handleResult,
+    createdAt: formatDateTime(item.createTime || item.createdAt),
+    updatedAt: formatDateTime(item.updateTime || item.updatedAt),
+    handleTime: formatDateTime(item.handleTime)
+  }
+}
+
 export const tradeService = {
   getProduct: async (id) => normalizeProduct(await api.getProduct(id)),
   createAppointment: async (data) => normalizeOrder(await api.createAppointment(data)),
@@ -119,5 +131,15 @@ export const tradeService = {
     result: item.handleResult,
     targetTypeLabel: TARGET_TYPE[item.targetType] || item.targetType,
     createdAt: formatDateTime(item.createTime || item.createdAt)
-  }))
+  })),
+  createAppeal: api.createAppeal,
+  getAppeals: async (params) => {
+    const result = await api.getAppeals(params)
+    return {
+      ...result,
+      items: (result?.items || []).map(normalizeAppeal)
+    }
+  },
+  getAppeal: async (id) => normalizeAppeal(await api.getAppeal(id)),
+  closeAppeal: api.closeAppeal
 }

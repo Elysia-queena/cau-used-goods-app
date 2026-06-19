@@ -51,6 +51,7 @@
       <button v-if="order.status === 'COMPLETED' && !isSeller" class="btn btn-primary" :disabled="hasReviewed" @click="review">
         {{ hasReviewed ? '已评价' : '去评价' }}
       </button>
+      <button class="btn btn-plain" @click="appeal">申诉订单问题</button>
       <button class="btn btn-plain" @click="report">举报交易问题</button>
     </view>
   </view>
@@ -185,6 +186,10 @@ function openSeller() {
 
 function report() {
   navigate('/pages/interaction/report', { targetType: 'ORDER', targetId: id })
+}
+
+function appeal() {
+  navigate('/pages/interaction/appeal', { targetType: 'ORDER', targetId: id })
 }
 </script>
 

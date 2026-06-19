@@ -12,6 +12,7 @@
         <text class="desc">{{ report.detail || '未填写补充说明' }}</text>
       </view>
       <view v-if="report.result" class="result">处理结果：{{ report.result }}</view>
+      <button class="appeal-button" @click="appealReport">申诉举报处理结果</button>
     </view>
 
     <view v-if="target" class="card">
@@ -108,6 +109,10 @@ function openProduct() {
 function openUser() {
   navigate('/pages/user-profile/user-profile', { id: report.value.targetId })
 }
+
+function appealReport() {
+  navigate('/pages/interaction/appeal', { targetType: 'REPORT', targetId: report.value.id })
+}
 </script>
 
 <style scoped>
@@ -121,6 +126,7 @@ function openUser() {
 .section-title { display: block; margin-bottom: 14rpx; color: #243129; font-size: 29rpx; font-weight: 700; }
 .desc { color: #59675f; font-size: 26rpx; line-height: 1.7; }
 .result { margin-top: 20rpx; padding: 18rpx; border-radius: 14rpx; color: #2f6b4f; background: #edf6f1; font-size: 25rpx; line-height: 1.5; }
+.appeal-button { margin-top: 22rpx; height: 76rpx; border-radius: 999rpx; background: #fff7e6; color: #a96500; font-size: 27rpx; line-height: 76rpx; }
 .product, .user { display: flex; gap: 18rpx; align-items: center; }
 .cover { width: 150rpx; height: 122rpx; flex: 0 0 150rpx; border-radius: 16rpx; background: #edf2ef; }
 .placeholder { display: flex; align-items: center; justify-content: center; color: #9aa5a1; font-size: 23rpx; }

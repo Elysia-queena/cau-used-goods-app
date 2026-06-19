@@ -17,11 +17,11 @@
         <view class="field">
           <view class="field-head">
             <text>商品图片</text>
-            <text class="muted">{{ form.images.length }}/9</text>
+            <text class="muted">{{ form.images.length }}/{{ MAX_IMAGES }}</text>
           </view>
 
           <view class="upload-row">
-            <view v-if="form.images.length < 9" class="upload" @click="chooseImages">
+            <view v-if="form.images.length < MAX_IMAGES" class="upload" @click="chooseImages">
               +
               <text>添加图片</text>
             </view>
@@ -37,9 +37,10 @@
               <text class="muted">商品卡片展示效果</text>
             </view>
             <view class="image-grid">
-              <view v-for="(image, index) in previewImages" :key="image + index" class="image-item" @click="previewImage(index)">
-                <image :src="image" mode="aspectFill" @click.stop="previewImage(index)" @tap.stop="previewImage(index)" />
+              <view v-for="(image, index) in previewImages" :key="image + index" class="image-item" @click="replaceImage(index)">
+                <image :src="image" mode="aspectFill" @click.stop="replaceImage(index)" @tap.stop="replaceImage(index)" />
                 <text class="ratio-tag">4:3</text>
+                <text class="edit-tag">点击修改</text>
                 <text class="remove" @click.stop="removeImage(index)">x</text>
               </view>
             </view>
@@ -174,6 +175,7 @@ import { getToken, setUser } from '../../utils/auth'
 import { normalizeImage } from '../../utils/product-format'
 
 const MAX_SIZE = 5 * 1024 * 1024
+const MAX_IMAGES = 9
 const CANVAS_WIDTH = 800
 const CANVAS_HEIGHT = 600
 const DESCRIPTION_LIMIT = 50
@@ -187,6 +189,7 @@ const previewImages = ref([])
 const editProductId = ref('')
 const originalImages = ref([])
 const newImages = ref([])
+const imageFlowActive = ref(false)
 const cropperVisible = ref(false)
 const cropSource = ref('')
 const cropResolve = ref(null)
@@ -306,7 +309,6 @@ const applyEditState = () => {
   uni.removeStorageSync('PUBLISH_EDIT_INTENT')
   if (!hasEditIntent) {
     clearEditStorage()
-    resetForm()
     return
   }
   const id = uni.getStorageSync('PUBLISH_EDIT_PRODUCT_ID')
@@ -341,7 +343,7 @@ const loadPublishState = async () => {
       return
     }
     categories.value = normalizeCategories(await listCategories())
-    applyEditState()
+    if (!imageFlowActive.value) applyEditState()
   } catch (error) {
     canPublish.value = false
     toast(error.message || '加载失败')
@@ -371,17 +373,20 @@ const removeImage = (index) => {
   form.images.splice(index, 1)
   previewImages.value.splice(index, 1)
 }
-const previewImage = (index) => {
-  if (!previewImages.value.length) return
-  const remoteUrls = form.images.map((image) => normalizeImage(image)).filter(Boolean)
-  const localUrls = previewImages.value.filter(Boolean)
-  const urls = remoteUrls.length === previewImages.value.length ? remoteUrls : localUrls
-  const current = remoteUrls[index] || localUrls[index]
-  if (!current) return
-  uni.previewImage({
-    urls,
-    current
-  })
+const appendImage = (imageUrl, previewUrl) => {
+  if (form.images.length >= MAX_IMAGES) return
+  form.images.push(imageUrl)
+  previewImages.value.push(normalizeImage(previewUrl || imageUrl))
+}
+const replaceImageAt = (index, imageUrl, previewUrl) => {
+  if (index < 0 || index >= form.images.length) return
+  const oldImage = form.images[index]
+  form.images.splice(index, 1, imageUrl)
+  previewImages.value.splice(index, 1, normalizeImage(previewUrl || imageUrl))
+  if (editMode.value) {
+    newImages.value = newImages.value.filter((item) => item !== oldImage)
+    newImages.value.push(imageUrl)
+  }
 }
 
 const clampOffset = () => {
@@ -509,36 +514,76 @@ const confirmCrop = () => {
   })
 }
 
+const chooseImageFiles = async (count) => {
+  const result = await uni.chooseImage({
+    count,
+    sizeType: ['compressed']
+  })
+  const selectedFiles = Array.isArray(result.tempFiles) && result.tempFiles.length
+    ? result.tempFiles
+    : (result.tempFilePaths || []).map((path) => ({ path, size: 0 }))
+  return selectedFiles.filter((file) => {
+    if (file.size > MAX_SIZE) {
+      toast('单张图片不能超过 5 MB')
+      return false
+    }
+    return true
+  })
+}
+
+const cropAndUploadImage = async (file, loadingTitle = '上传裁剪图中') => {
+  const filePath = file.path || file.tempFilePath
+  if (!filePath) return ''
+  const croppedPath = await openCropper(filePath)
+  if (!croppedPath) return ''
+  uni.showLoading({ title: loadingTitle })
+  try {
+    const uploaded = await uploadProductImage(croppedPath)
+    return uploaded.imageUrl
+  } finally {
+    uni.hideLoading()
+  }
+}
+
+const replaceImage = async (index) => {
+  if (!canPublish.value) return toast('未完成学生认证')
+  imageFlowActive.value = true
+  try {
+    const files = await chooseImageFiles(1)
+    const file = files[0]
+    if (!file) return
+    const imageUrl = await cropAndUploadImage(file, '上传新图片中')
+    if (!imageUrl) return
+    replaceImageAt(index, imageUrl)
+  } catch (error) {
+    if (!error?.errMsg?.includes('cancel')) toast(error.message || '图片修改失败')
+  } finally {
+    imageFlowActive.value = false
+    uni.hideLoading()
+  }
+}
+
 const chooseImages = async () => {
   if (!canPublish.value) return toast('未完成学生认证')
+  const remaining = MAX_IMAGES - form.images.length
+  if (remaining <= 0) return toast(`最多上传 ${MAX_IMAGES} 张商品图片`)
 
+  imageFlowActive.value = true
   try {
-    const result = await uni.chooseImage({
-      count: 9 - form.images.length,
-      sizeType: ['compressed']
-    })
-    const files = result.tempFiles.filter((file) => {
-      if (file.size > MAX_SIZE) {
-        toast('单张图片不能超过 5 MB')
-        return false
-      }
-      return true
-    })
+    const files = (await chooseImageFiles(remaining)).slice(0, remaining)
     if (!files.length) return
 
     for (const file of files) {
-      const croppedPath = await openCropper(file.path)
-      if (!croppedPath) continue
-      uni.showLoading({ title: '上传裁剪图中' })
-      const uploaded = await uploadProductImage(croppedPath)
-      form.images.push(uploaded.imageUrl)
-      if (editMode.value) newImages.value.push(uploaded.imageUrl)
-      previewImages.value.push(croppedPath)
-      uni.hideLoading()
+      if (form.images.length >= MAX_IMAGES) break
+      const imageUrl = await cropAndUploadImage(file)
+      if (!imageUrl) continue
+      appendImage(imageUrl)
+      if (editMode.value) newImages.value.push(imageUrl)
     }
   } catch (error) {
     if (!error?.errMsg?.includes('cancel')) toast(error.message || '图片选择或上传失败')
   } finally {
+    imageFlowActive.value = false
     uni.hideLoading()
   }
 }
@@ -663,9 +708,11 @@ textarea { height: 180rpx; }
 .image-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16rpx; }
 .image-item { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 14rpx; background: #edf4f1; }
 .image-item image { width: 100%; height: 100%; }
-.ratio-tag, .remove { position: absolute; top: 8rpx; border-radius: 999rpx; color: #fff !important; font-size: 20rpx !important; font-weight: 700 !important; line-height: 34rpx; text-align: center; }
+.ratio-tag, .remove, .edit-tag { position: absolute; border-radius: 999rpx; color: #fff !important; font-size: 20rpx !important; font-weight: 700 !important; line-height: 34rpx; text-align: center; }
+.ratio-tag, .remove { top: 8rpx; }
 .ratio-tag { left: 8rpx; padding: 0 10rpx; background: rgba(35,115,79,.82); }
 .remove { right: 8rpx; width: 34rpx; height: 34rpx; background: rgba(0,0,0,.55); }
+.edit-tag { right: 8rpx; bottom: 8rpx; padding: 0 10rpx; background: rgba(0,0,0,.48); }
 .submit { margin: 0 28rpx; height: 88rpx; line-height: 88rpx; font-size: 30rpx; }
 .crop-mask { position: fixed; z-index: 99; top: 0; right: 0; bottom: 0; left: 0; display: flex; align-items: center; justify-content: center; padding: 28rpx; background: rgba(0,0,0,.58); box-sizing: border-box; }
 .crop-panel { width: 100%; padding: 28rpx; border-radius: 20rpx; background: #fff; box-sizing: border-box; }
