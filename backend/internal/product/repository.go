@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
+	"unicode"
 )
 
 type Repository struct {
@@ -241,58 +243,64 @@ func (r *Repository) ListProducts(ctx context.Context, input ListProductsInput) 
 	}
 	input.Status = "ON_SALE"
 
-	where := ` WHERE is_deleted = 0 `
+	where := ` WHERE p.is_deleted = 0 `
 	args := []any{input.Status}
-	where += " AND status = ? "
+	where += " AND p.status = ? "
 
-	if input.Keyword != "" {
-		where += " AND (title LIKE ? OR description LIKE ?) "
-		keyword := "%" + input.Keyword + "%"
-		args = append(args, keyword, keyword)
+	for _, term := range splitProductSearchKeyword(input.Keyword) {
+		where += " AND (p.title LIKE ? OR p.description LIKE ? OR c.name LIKE ?) "
+		keyword := "%" + term + "%"
+		args = append(args, keyword, keyword, keyword)
 	}
 
 	if input.CategoryID > 0 {
-		where += " AND category_id = ? "
+		where += " AND p.category_id = ? "
 		args = append(args, input.CategoryID)
 	}
 
 	if input.ConditionLevel != "" {
-		where += " AND condition_level = ? "
+		where += " AND p.condition_level = ? "
 		args = append(args, input.ConditionLevel)
 	}
 
 	if input.MinPrice != nil {
-		where += " AND price >= ? "
+		where += " AND p.price >= ? "
 		args = append(args, *input.MinPrice)
 	}
 
 	if input.MaxPrice != nil {
-		where += " AND price <= ? "
+		where += " AND p.price <= ? "
 		args = append(args, *input.MaxPrice)
 	}
 
 	var total int
-	if err := r.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM products "+where, args...).Scan(&total); err != nil {
+	countQuery := `
+		SELECT COUNT(*)
+		FROM products p
+		LEFT JOIN categories c ON c.id = p.category_id
+	` + where
+	if err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total); err != nil {
 		return nil, err
 	}
 
-	orderBy := " ORDER BY create_time DESC "
+	orderBy := " ORDER BY p.create_time DESC "
 	switch input.Sort {
 	case "price_asc":
-		orderBy = " ORDER BY price ASC, create_time DESC "
+		orderBy = " ORDER BY p.price ASC, p.create_time DESC "
 	case "price_desc":
-		orderBy = " ORDER BY price DESC, create_time DESC "
+		orderBy = " ORDER BY p.price DESC, p.create_time DESC "
 	case "popular":
-		orderBy = " ORDER BY view_count DESC, favorite_count DESC, create_time DESC "
+		orderBy = " ORDER BY p.view_count DESC, p.favorite_count DESC, p.create_time DESC "
 	}
 
 	offset := (input.Page - 1) * input.PageSize
 
 	query := `
-		SELECT id, seller_id, category_id, title, description, original_price,
-		       price, condition_level, meet_location, status, view_count,
-		       favorite_count, DATE_FORMAT(create_time, '%Y-%m-%d %H:%i:%s')
-		FROM products
+		SELECT p.id, p.seller_id, p.category_id, p.title, p.description, p.original_price,
+		       p.price, p.condition_level, p.meet_location, p.status, p.view_count,
+		       p.favorite_count, DATE_FORMAT(p.create_time, '%Y-%m-%d %H:%i:%s')
+		FROM products p
+		LEFT JOIN categories c ON c.id = p.category_id
 	` + where + orderBy + ` LIMIT ? OFFSET ?`
 
 	queryArgs := append(args, input.PageSize, offset)
@@ -337,6 +345,26 @@ func (r *Repository) ListProducts(ctx context.Context, input ListProductsInput) 
 		PageSize: input.PageSize,
 		Total:    total,
 	}, nil
+}
+
+func splitProductSearchKeyword(keyword string) []string {
+	terms := strings.FieldsFunc(strings.TrimSpace(keyword), func(r rune) bool {
+		return unicode.IsSpace(r) || r == ',' || r == '\uFF0C' || r == ';' || r == '\uFF1B'
+	})
+	if len(terms) == 0 {
+		return nil
+	}
+
+	result := make([]string, 0, len(terms))
+	seen := make(map[string]bool, len(terms))
+	for _, term := range terms {
+		if seen[term] {
+			continue
+		}
+		seen[term] = true
+		result = append(result, term)
+	}
+	return result
 }
 func (r *Repository) IncrementViewCount(ctx context.Context, productID uint64, viewer ProductViewer) error {
 	if viewer.Role == "ADMIN" || viewer.Role == "SUPER_ADMIN" {
