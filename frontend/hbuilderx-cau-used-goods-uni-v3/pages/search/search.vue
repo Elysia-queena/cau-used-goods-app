@@ -5,7 +5,7 @@
         v-model.trim="filters.keyword"
         class="search-input"
         confirm-type="search"
-        placeholder="搜索商品标题或描述"
+        placeholder="搜索商品标题、描述或分类标签"
         @confirm="search"
       />
       <button class="search-button" @click="search">搜索</button>
