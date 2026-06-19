@@ -31,7 +31,6 @@
           @click="openChat(item)"
         >
           <image v-if="item.avatar" class="avatar image-avatar" :src="item.avatar" mode="aspectFill" />
-          <view v-else class="avatar user-avatar">{{ avatarText(item) }}</view>
           <view class="body">
             <view class="head">
               <text class="name">{{ item.targetNickname || 'CAU 同学' }}</text>
@@ -58,6 +57,7 @@ import EmptyState from '../../components/EmptyState.vue'
 import { hideConversation as hideConversationApi, listConversations } from '../../api/chat'
 import { getPublicProfile } from '../../api/user'
 import { tradeService } from '../../services/trade'
+import { getUser } from '../../utils/auth'
 import { BASE_URL } from '../../utils/request'
 import { navigate, showError } from '../../utils/navigation'
 
@@ -86,28 +86,72 @@ function localizeHttpImage(url) {
 }
 
 const pick = (...values) => values.find((value) => value !== undefined && value !== null && value !== '') || ''
+const sameId = (a, b) => a !== undefined && a !== null && a !== '' && b !== undefined && b !== null && b !== '' && String(a) === String(b)
+
+function currentUserId() {
+  const user = getUser() || {}
+  return pick(user.id, user.userId, user.user_id)
+}
+
+function getBuyerId(item) {
+  return pick(item.buyerId, item.buyerUserId, item.buyer_id, item.buyer?.id, item.buyer?.userId)
+}
+
+function getSellerId(item) {
+  return pick(item.sellerId, item.sellerUserId, item.seller_id, item.seller?.id, item.seller?.userId, item.product?.sellerId, item.product?.seller?.id)
+}
+
+function getPeerId(item) {
+  const mine = currentUserId()
+  const buyerId = getBuyerId(item)
+  const sellerId = getSellerId(item)
+  if (sameId(mine, buyerId) && sellerId) return sellerId
+  if (sameId(mine, sellerId) && buyerId) return buyerId
+  return pick(
+    item.targetUserId,
+    item.targetId,
+    item.otherUserId,
+    item.userId,
+    item.targetUser?.id,
+    item.otherUser?.id,
+    item.user?.id,
+    sellerId,
+    buyerId
+  )
+}
+
+function getPeerNickname(item) {
+  const peerId = getPeerId(item)
+  const buyerId = getBuyerId(item)
+  const sellerId = getSellerId(item)
+  if (sameId(peerId, buyerId)) {
+    return pick(item.buyerNickname, item.buyerName, item.buyerUserNickname, item.buyer?.nickname, item.buyer?.name)
+  }
+  if (sameId(peerId, sellerId)) {
+    return pick(item.sellerNickname, item.sellerName, item.sellerUserNickname, item.seller?.nickname, item.seller?.name, item.product?.seller?.nickname)
+  }
+  return ''
+}
+
+function getPeerAvatar(item) {
+  const peerId = getPeerId(item)
+  const buyerId = getBuyerId(item)
+  const sellerId = getSellerId(item)
+  if (sameId(peerId, buyerId)) {
+    return normalizeImage(pick(item.buyerAvatarUrl, item.buyerAvatar, item.buyerUserAvatarUrl, item.buyer?.avatarUrl, item.buyer?.avatar, item.buyer?.avatar_url))
+  }
+  if (sameId(peerId, sellerId)) {
+    return normalizeImage(pick(item.sellerAvatarUrl, item.sellerAvatar, item.sellerUserAvatarUrl, item.seller?.avatarUrl, item.seller?.avatar, item.seller?.avatar_url, item.product?.seller?.avatarUrl, item.product?.seller?.avatar))
+  }
+  return ''
+}
 
 function getConversationAvatar(item) {
-  return normalizeImage(pick(
-    item.targetAvatarUrl,
-    item.targetUserAvatarUrl,
-    item.targetAvatar,
-    item.otherUserAvatarUrl,
-    item.otherAvatarUrl,
-    item.userAvatarUrl,
-    item.avatarUrl,
-    item.avatar,
-    item.targetUser?.avatarUrl,
-    item.targetUser?.avatar,
-    item.otherUser?.avatarUrl,
-    item.otherUser?.avatar,
-    item.user?.avatarUrl,
-    item.user?.avatar
-  ))
+  return getPeerAvatar(item)
 }
 
 function getConversationNickname(item) {
-  return pick(
+  return getPeerNickname(item) || pick(
     item.targetNickname,
     item.targetUserNickname,
     item.otherUserNickname,
@@ -119,16 +163,7 @@ function getConversationNickname(item) {
 }
 
 function getConversationTargetId(item) {
-  return pick(
-    item.sellerId,
-    item.targetUserId,
-    item.targetId,
-    item.otherUserId,
-    item.userId,
-    item.targetUser?.id,
-    item.otherUser?.id,
-    item.user?.id
-  )
+  return getPeerId(item)
 }
 
 const systemMessages = computed(() => messages.value.filter((item) => SYSTEM_TYPES.includes(item.type || item.messageType)))
@@ -165,10 +200,6 @@ function formatTime(value) {
   const pad = (n) => String(n).padStart(2, '0')
   const sameDay = date.toDateString() === now.toDateString()
   return sameDay ? `${pad(date.getHours())}:${pad(date.getMinutes())}` : `${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
-}
-
-function avatarText(item) {
-  return (item.targetNickname || '同').slice(0, 1)
 }
 
 function conversationProductTitle(item) {
@@ -224,18 +255,22 @@ async function load() {
       targetUserId: getConversationTargetId(item),
       avatar: getConversationAvatar(item)
     }))
-    conversations.value = await Promise.all(conversations.value.map(async (item) => ({
-      ...item,
-      avatar: await localizeHttpImage(item.avatar)
-    })))
     conversations.value = await Promise.all(conversations.value.map(async (item) => {
-      const sellerId = item.sellerId || item.targetUserId
-      if (!sellerId) return item
-      const profile = await getPublicProfile(sellerId).catch(() => null)
+      const targetUserId = item.targetUserId || getConversationTargetId(item)
+      if (!targetUserId) return item
+      const profile = await getPublicProfile(targetUserId).catch(() => null)
       if (!profile) return item
-      const avatar = await localizeHttpImage(normalizeImage(pick(profile.avatarUrl, profile.avatar, profile.avatar_url, item.avatar)))
+      const avatar = await localizeHttpImage(normalizeImage(pick(
+        profile.avatarUrl,
+        profile.avatar,
+        profile.avatar_url,
+        profile.user?.avatarUrl,
+        profile.user?.avatar,
+        profile.user?.avatar_url
+      )))
       return {
         ...item,
+        targetUserId,
         targetNickname: profile.nickname || item.targetNickname,
         avatar
       }
@@ -261,11 +296,31 @@ function openSystemMessages() {
   navigate('/pages/messages/system-messages')
 }
 
-function openChat(item) {
+async function openChat(item) {
+  const targetUserId = item.targetUserId || getConversationTargetId(item)
+  let targetNickname = item.targetNickname || ''
+  let targetAvatar = item.avatar || ''
+  if (targetUserId && (!targetNickname || !targetAvatar)) {
+    const profile = await getPublicProfile(targetUserId).catch(() => null)
+    if (profile) {
+      targetNickname = profile.nickname || targetNickname
+      targetAvatar = normalizeImage(pick(
+        profile.avatarUrl,
+        profile.avatar,
+        profile.avatar_url,
+        profile.user?.avatarUrl,
+        profile.user?.avatar,
+        profile.user?.avatar_url,
+        targetAvatar
+      ))
+    }
+  }
   navigate('/pages/chat/chat', {
     conversationId: item.id,
     title: conversationProductTitle(item) || '私信沟通',
-    targetUserId: getConversationTargetId(item),
+    targetUserId,
+    targetNickname: targetNickname ? encodeURIComponent(targetNickname) : '',
+    targetAvatar: targetAvatar ? encodeURIComponent(targetAvatar) : '',
     productId: conversationProductId(item)
   })
 }
@@ -320,7 +375,6 @@ onShow(load)
 .user-conversation { z-index: 1; }
 .avatar { display: flex; width: 84rpx; height: 84rpx; flex-shrink: 0; align-items: center; justify-content: center; border-radius: 50%; color: #fff; font-size: 28rpx; font-weight: 700; }
 .system-avatar { background: #87909a; }
-.user-avatar { background: linear-gradient(135deg, #f3b34c, #f47b45); }
 .image-avatar { background: #e8ecef; }
 .body { flex: 1; min-width: 0; }
 .head { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }

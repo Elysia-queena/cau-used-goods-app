@@ -16,7 +16,7 @@
             <text class="appeal-title">{{ appeal.reason }}</text>
             <StatusBadge :label="status(appeal.status).label" :tone="status(appeal.status).tone" />
           </view>
-          <text class="appeal-meta">{{ appeal.targetTypeLabel || appeal.targetType }} · {{ appeal.targetId }} · {{ appeal.createdAt }}</text>
+          <text class="appeal-meta">{{ appealMeta(appeal) }}</text>
           <view v-if="appeal.result" class="result">处理结果：{{ appeal.result }}</view>
         </view>
       </view>
@@ -53,6 +53,24 @@ function status(value) {
 
 function isDone(value) {
   return ['APPROVED', 'REJECTED', 'CLOSED'].includes(value)
+}
+
+function targetText(value) {
+  return {
+    PRODUCT: '商品',
+    USER: '用户',
+    ORDER: '订单',
+    REPORT: '举报'
+  }[String(value || '').toUpperCase()] || ''
+}
+
+function appealMeta(appeal = {}) {
+  const parts = []
+  const target = targetText(appeal.targetType)
+  if (target) parts.push(appeal.targetId ? `${target} #${appeal.targetId}` : target)
+  else if (appeal.targetId) parts.push(`#${appeal.targetId}`)
+  if (appeal.createdAt) parts.push(appeal.createdAt)
+  return parts.join(' · ')
 }
 
 function openDetail(appeal) {

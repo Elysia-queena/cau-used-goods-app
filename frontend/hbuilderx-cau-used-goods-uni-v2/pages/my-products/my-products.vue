@@ -46,7 +46,10 @@
 import { computed, ref } from 'vue'
 import { onPullDownRefresh, onShow } from '@dcloudio/uni-app'
 import { deleteProduct, listCategories, listMyProducts, updateProductStatus } from '../../api/product'
+import { getCurrentUser } from '../../api/auth'
+import { getUser, setUser } from '../../utils/auth'
 import { buildCategoryMap, formatProduct, getStatusText } from '../../utils/product-format'
+import { accountStatusOf, userTradeRestrictionMessage } from '../../utils/user-format'
 
 const categories = ref([])
 const rawProducts = ref([])
@@ -76,6 +79,35 @@ const goPublish = () => {
 }
 const canEdit = (item) => ['ON_SALE', 'OFF_SHELF'].includes(item.status)
 
+const normalizeStatusError = (error, status = 'ON_SALE') => {
+  const message = String(error?.message || '')
+  if (/BANNED|PERM_BANNED|PERMANENT_BANNED|\u5c01\u7981/i.test(message)) return userTradeRestrictionMessage('BANNED', 'sale')
+  if (/DISABLED|\u7981\u7528/i.test(message)) return userTradeRestrictionMessage('DISABLED', 'sale')
+  if (/CANCELED|CANCELLED|\u6ce8\u9500/i.test(message)) return userTradeRestrictionMessage('CANCELED', 'sale')
+  if (/403|FORBIDDEN|PERMISSION|VERIFY|VERIFIED|\u6743\u9650/i.test(message)) {
+    return status === 'ON_SALE' ? '\u8d26\u53f7\u72b6\u6001\u4e0d\u6ee1\u8db3\u4e0a\u67b6\u6761\u4ef6' : '\u8d26\u53f7\u72b6\u6001\u4e0d\u6ee1\u8db3\u4e0b\u67b6\u6761\u4ef6'
+  }
+  return message || (status === 'ON_SALE' ? '\u4e0a\u67b6\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5' : '\u4e0b\u67b6\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5')
+}
+
+const ensureCanPutOnSale = async () => {
+  try {
+    const cached = getUser() || {}
+    const current = { ...cached, ...(await getCurrentUser()) }
+    setUser(current)
+    const restrictionMessage = userTradeRestrictionMessage(accountStatusOf(current), 'sale')
+    if (restrictionMessage) {
+      uni.showToast({ title: restrictionMessage, icon: 'none' })
+      return false
+    }
+  } catch (error) {
+    const cachedRestriction = userTradeRestrictionMessage(accountStatusOf(getUser() || {}), 'sale')
+    uni.showToast({ title: cachedRestriction || normalizeStatusError(error, 'ON_SALE'), icon: 'none' })
+    return false
+  }
+  return true
+}
+
 const editProduct = (item) => {
   uni.setStorageSync('PUBLISH_EDIT_PRODUCT_ID', item.id)
   uni.setStorageSync('PUBLISH_EDIT_PRODUCT_DATA', item)
@@ -95,11 +127,12 @@ const changeStatus = (item, status) => {
     success: async ({ confirm }) => {
       if (!confirm) return
       try {
+        if (status === 'ON_SALE' && !(await ensureCanPutOnSale())) return
         await updateProductStatus(item.id, status)
         uni.showToast({ title: status === 'ON_SALE' ? '已上架' : '已下架', icon: 'success' })
         await loadData()
       } catch (error) {
-        uni.showToast({ title: error.message, icon: 'none' })
+        uni.showToast({ title: normalizeStatusError(error, status), icon: 'none' })
       }
     }
   })

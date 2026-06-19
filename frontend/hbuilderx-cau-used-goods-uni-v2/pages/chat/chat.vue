@@ -29,24 +29,22 @@
           >
             <view class="message-row" :class="{ mine: item.mine }">
               <image
-                v-if="!item.mine && targetAvatar"
+                v-if="!item.mine && messageAvatar(item)"
                 class="avatar image-avatar"
-                :src="targetAvatar"
+                :src="messageAvatar(item)"
                 mode="aspectFill"
                 @click.stop="openUser(item.senderId)"
               />
-              <view v-else-if="!item.mine" class="avatar seller-avatar" @click.stop="openUser(item.senderId)">{{ targetInitial }}</view>
               <view class="bubble">
                 <view class="content">{{ item.content }}</view>
               </view>
               <image
-                v-if="item.mine && mineAvatar"
+                v-if="item.mine && messageAvatar(item)"
                 class="avatar image-avatar"
-                :src="mineAvatar"
+                :src="messageAvatar(item)"
                 mode="aspectFill"
                 @click.stop="openUser(currentUserId)"
               />
-              <view v-else-if="item.mine" class="avatar buyer-avatar" @click.stop="openUser(currentUserId)">{{ mineInitial }}</view>
             </view>
           </view>
         </view>
@@ -73,6 +71,8 @@ import { navigate } from '../../utils/navigation'
 const conversationId = ref('')
 const title = ref('')
 const targetUserId = ref('')
+const targetNicknameSnapshot = ref('')
+const targetAvatarSnapshot = ref('')
 const productId = ref('')
 const messages = ref([])
 const draft = ref('')
@@ -80,6 +80,7 @@ const loading = ref(false)
 const sending = ref(false)
 const targetProfile = ref(null)
 const mineProfile = ref(null)
+const profileMap = ref({})
 const swipedMessageId = ref('')
 let touchStartX = 0
 let touchMessageId = ''
@@ -89,13 +90,10 @@ const currentUser = computed(() => getUser() || {})
 const productTitle = computed(() => title.value || '商品详情')
 const pick = (...values) => values.find((value) => value !== undefined && value !== null && value !== '') || ''
 const sellerIdText = computed(() => pick(targetUserId.value, targetProfile.value?.id, targetProfile.value?.userId))
-const sellerName = computed(() => targetProfile.value?.nickname || title.value || '卖家')
-const targetAvatar = computed(() => normalizeImage(pick(targetProfile.value?.avatarUrl, targetProfile.value?.avatar, targetProfile.value?.avatar_url)))
+const sellerName = computed(() => targetProfile.value?.nickname || targetNicknameSnapshot.value || '对方')
+const targetAvatar = computed(() => normalizeImage(pick(targetProfile.value?.avatarUrl, targetProfile.value?.avatar, targetProfile.value?.avatar_url, targetAvatarSnapshot.value)))
 const mineAvatar = computed(() => normalizeImage(pick(currentUser.value.avatarUrl, currentUser.value.avatar, mineProfile.value?.avatarUrl, mineProfile.value?.avatar, mineProfile.value?.avatar_url)))
-const targetName = computed(() => targetProfile.value?.nickname || title.value || '同学')
 const mineName = computed(() => currentUser.value.nickname || mineProfile.value?.nickname || '我')
-const targetInitial = computed(() => targetName.value.slice(0, 1) || '同')
-const mineInitial = computed(() => mineName.value.slice(0, 1) || '我')
 const lastMessageId = computed(() => {
   const last = messages.value[messages.value.length - 1]
   return last ? `msg-${last.id}` : ''
@@ -152,6 +150,40 @@ function localizeHttpImage(url) {
   })
 }
 
+function setProfile(id, profile) {
+  if (!id || !profile) return
+  profileMap.value = {
+    ...profileMap.value,
+    [String(id)]: profile
+  }
+}
+
+function seedInitialProfiles() {
+  const mineAvatarUrl = normalizeImage(pick(currentUser.value.avatarUrl, currentUser.value.avatar))
+  if (currentUserId.value && (mineAvatarUrl || currentUser.value.nickname)) {
+    setProfile(currentUserId.value, { ...currentUser.value, avatarUrl: mineAvatarUrl })
+  }
+  if (targetUserId.value && (targetAvatarSnapshot.value || targetNicknameSnapshot.value)) {
+    const profile = {
+      id: targetUserId.value,
+      nickname: targetNicknameSnapshot.value,
+      avatarUrl: normalizeImage(targetAvatarSnapshot.value)
+    }
+    targetProfile.value = profile
+    setProfile(targetUserId.value, profile)
+  }
+}
+
+function profileAvatar(id) {
+  const profile = profileMap.value[String(id || '')]
+  return normalizeImage(pick(profile?.avatarUrl, profile?.avatar, profile?.avatar_url))
+}
+
+function messageAvatar(item) {
+  if (item.mine) return profileAvatar(currentUserId.value) || mineAvatar.value
+  return profileAvatar(item.senderId) || (String(item.senderId) === String(targetUserId.value) ? targetAvatar.value : '')
+}
+
 const messageTime = (item) => new Date(String(item.createTime || '').replace(/-/g, '/')).getTime()
 const formatTime = (value) => {
   const date = new Date(String(value || '').replace(/-/g, '/'))
@@ -195,20 +227,32 @@ const load = async () => {
 }
 
 const loadProfiles = async () => {
-  const jobs = []
-  if (targetUserId.value) {
-    jobs.push(getPublicProfile(targetUserId.value).then(async (data) => {
+  const ids = new Set([currentUserId.value, targetUserId.value])
+  messages.value.forEach((item) => {
+    if (item.senderId) ids.add(item.senderId)
+  })
+  const jobs = Array.from(ids).filter(Boolean).map((id) => (
+    getPublicProfile(id).then(async (data) => {
       const avatarUrl = await localizeHttpImage(normalizeImage(pick(data?.avatarUrl, data?.avatar, data?.avatar_url)))
-      targetProfile.value = { ...data, avatarUrl }
-    }).catch(() => {}))
-  }
-  if (currentUserId.value && !currentUser.value.avatarUrl) {
-    jobs.push(getPublicProfile(currentUserId.value).then(async (data) => {
-      const avatarUrl = await localizeHttpImage(normalizeImage(pick(data?.avatarUrl, data?.avatar, data?.avatar_url)))
-      mineProfile.value = { ...data, avatarUrl }
-    }).catch(() => {}))
-  }
+      const profile = { ...data, avatarUrl }
+      setProfile(id, profile)
+      if (String(id) === String(targetUserId.value)) targetProfile.value = profile
+      if (String(id) === String(currentUserId.value)) mineProfile.value = profile
+    }).catch(() => {})
+  ))
   await Promise.all(jobs)
+}
+
+async function loadInitialTargetProfile() {
+  if (!targetUserId.value || (targetNicknameSnapshot.value && targetAvatarSnapshot.value)) return
+  const data = await getPublicProfile(targetUserId.value).catch(() => null)
+  if (!data) return
+  const avatarUrl = await localizeHttpImage(normalizeImage(pick(data?.avatarUrl, data?.avatar, data?.avatar_url)))
+  const profile = { ...data, avatarUrl }
+  targetNicknameSnapshot.value = profile.nickname || targetNicknameSnapshot.value
+  targetAvatarSnapshot.value = avatarUrl || targetAvatarSnapshot.value
+  targetProfile.value = profile
+  setProfile(targetUserId.value, profile)
 }
 
 const send = async () => {
@@ -218,6 +262,7 @@ const send = async () => {
   try {
     const message = await sendMessage(conversationId.value, original)
     messages.value = messages.value.concat(message)
+    await loadProfiles()
     draft.value = ''
     if (message.content !== original) {
       uni.showToast({ title: '禁止使用敏感词汇，已替换为 *', icon: 'none' })
@@ -301,7 +346,11 @@ onLoad(async (options) => {
   conversationId.value = options.conversationId || ''
   title.value = options.title ? decodeURIComponent(options.title) : ''
   targetUserId.value = options.targetUserId || ''
+  targetNicknameSnapshot.value = options.targetNickname ? decodeURIComponent(options.targetNickname) : ''
+  targetAvatarSnapshot.value = options.targetAvatar ? decodeURIComponent(options.targetAvatar) : ''
   productId.value = options.productId || ''
+  seedInitialProfiles()
+  await loadInitialTargetProfile()
   await load()
   await loadProfiles()
 })
@@ -309,6 +358,7 @@ onLoad(async (options) => {
 onPullDownRefresh(async () => {
   try {
     await load()
+    await loadProfiles()
   } finally {
     uni.stopPullDownRefresh()
   }

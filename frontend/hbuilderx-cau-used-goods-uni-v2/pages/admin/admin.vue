@@ -116,12 +116,20 @@
         <view class="trend-note">成交趋势需后端新增按日期统计后接入</view>
       </view>
 
-      <view class="section-title">商品分类统计</view>
+      <view class="section-title category-title">
+        <text>{{ selectedPrimaryCategory ? `${selectedPrimaryCategory.name} · 二级分类` : '商品分类统计' }}</text>
+        <text v-if="selectedPrimaryCategory" class="category-back" @click="clearSelectedPrimary">返回一级</text>
+      </view>
       <view class="category-list">
-        <view v-for="item in categoryDistribution" :key="item.categoryId" class="category-item">
+        <view
+          v-for="item in categoryRows"
+          :key="item.categoryId || item.categoryName"
+          class="category-item"
+          @click="openPrimaryCategory(item)"
+        >
           <view class="category-head">
             <text class="category-name">{{ item.categoryName }}</text>
-            <text class="category-count">{{ item.productCount || 0 }} 件</text>
+            <text class="category-count">{{ item.productCount || 0 }} 件{{ !selectedPrimaryCategory && item.childrenCount ? ' ›' : '' }}</text>
           </view>
           <view class="category-progress">
             <view class="category-bar" :style="categoryBarStyle(item.productCount)"></view>
@@ -132,7 +140,7 @@
             <text>均价 {{ money(item.averagePrice) }}</text>
           </view>
         </view>
-        <view v-if="!categoryDistribution.length" class="empty">暂无分类统计</view>
+        <view v-if="!categoryRows.length" class="empty">{{ selectedPrimaryCategory ? '暂无二级分类统计' : '暂无分类统计' }}</view>
       </view>
 
       <view class="section-title">运营提醒</view>
@@ -250,6 +258,7 @@ import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 import {
   getCategoryDistribution,
+  getAdminCategories,
   getAppealOverview,
   getOrderOverview,
   getProductOverview,
@@ -269,6 +278,8 @@ const orderOverview = ref({})
 const reportOverview = ref({})
 const appealOverview = ref({})
 const categoryDistribution = ref([])
+const adminCategories = ref([])
+const selectedPrimaryId = ref('')
 const productTrend = ref([])
 
 const riskTodoCount = computed(() => {
@@ -283,9 +294,88 @@ const adminAvatarUrl = computed(() => {
   return url
 })
 
+const idOf = (item) => item?.id || item?.categoryId || item?.category_id || ''
+const nameOf = (item) => item?.name || item?.categoryName || item?.category_name || '分类'
+const parentIdOf = (item) => Number(item?.parentId || item?.parent_id || 0)
+const statCategoryId = (item) => item?.categoryId || item?.category_id || item?.id || ''
+const categoryMap = computed(() => {
+  const map = {}
+  adminCategories.value.forEach((item) => {
+    const id = idOf(item)
+    if (id) map[String(id)] = item
+  })
+  return map
+})
+const primaryCategories = computed(() => adminCategories.value.filter((item) => parentIdOf(item) === 0))
+const selectedPrimaryCategory = computed(() => {
+  if (!selectedPrimaryId.value) return null
+  const category = categoryMap.value[String(selectedPrimaryId.value)]
+  return category ? { ...category, id: idOf(category), name: nameOf(category) } : null
+})
+
+function emptyCategoryRow(categoryId, categoryName) {
+  return {
+    categoryId,
+    categoryName,
+    productCount: 0,
+    onSaleCount: 0,
+    averagePrice: 0,
+    _totalPrice: 0,
+    childrenCount: 0
+  }
+}
+
+function addCategoryStat(target, item) {
+  const productCount = Number(item?.productCount || item?.count || 0)
+  const onSaleCount = Number(item?.onSaleCount || item?.on_sale_count || 0)
+  const averagePrice = Number(item?.averagePrice || item?.average_price || 0)
+  target.productCount += productCount
+  target.onSaleCount += onSaleCount
+  target._totalPrice += averagePrice * productCount
+  target.averagePrice = target.productCount ? target._totalPrice / target.productCount : 0
+}
+
+const primaryCategoryRows = computed(() => {
+  const rows = new Map()
+  categoryDistribution.value.forEach((item) => {
+    const categoryId = statCategoryId(item)
+    const category = categoryMap.value[String(categoryId)]
+    const primary = category && parentIdOf(category) ? categoryMap.value[String(parentIdOf(category))] : category
+    const primaryId = idOf(primary) || categoryId || nameOf(item)
+    const primaryName = primary ? nameOf(primary) : (item.categoryName || item.name || '分类')
+    if (!rows.has(String(primaryId))) rows.set(String(primaryId), emptyCategoryRow(primaryId, primaryName))
+    const row = rows.get(String(primaryId))
+    if (category && parentIdOf(category)) row.childrenCount += 1
+    addCategoryStat(row, item)
+  })
+  return Array.from(rows.values()).sort((a, b) => Number(b.productCount || 0) - Number(a.productCount || 0))
+})
+
+const childCategoryRows = computed(() => {
+  if (!selectedPrimaryId.value) return []
+  const rows = []
+  const children = adminCategories.value.filter((item) => Number(parentIdOf(item)) === Number(selectedPrimaryId.value))
+  children.forEach((child) => {
+    const childId = idOf(child)
+    const row = emptyCategoryRow(childId, nameOf(child))
+    categoryDistribution.value
+      .filter((item) => String(statCategoryId(item)) === String(childId))
+      .forEach((item) => addCategoryStat(row, item))
+    if (row.productCount > 0) rows.push(row)
+  })
+  const directRow = emptyCategoryRow(`${selectedPrimaryId.value}-direct`, '未细分')
+  categoryDistribution.value
+    .filter((item) => String(statCategoryId(item)) === String(selectedPrimaryId.value))
+    .forEach((item) => addCategoryStat(directRow, item))
+  if (directRow.productCount > 0) rows.unshift(directRow)
+  return rows.sort((a, b) => Number(b.productCount || 0) - Number(a.productCount || 0))
+})
+
+const categoryRows = computed(() => selectedPrimaryId.value ? childCategoryRows.value : primaryCategoryRows.value)
+
 const loadAdminData = async () => {
   try {
-    const [me, users, productStats, orders, reportStats, appealStats, categories, trend] = await Promise.all([
+    const [me, users, productStats, orders, reportStats, appealStats, categories, categoryTree, trend] = await Promise.all([
       getCurrentUser(),
       getUserOverview(),
       getProductOverview(),
@@ -293,6 +383,7 @@ const loadAdminData = async () => {
       getReportOverview(),
       getAppealOverview(),
       getCategoryDistribution(),
+      getAdminCategories().catch(() => []),
       getProductTrend(7)
     ])
     currentUser.value = me || {}
@@ -302,7 +393,8 @@ const loadAdminData = async () => {
     orderOverview.value = orders || {}
     reportOverview.value = reportStats || {}
     appealOverview.value = appealStats || {}
-    categoryDistribution.value = categories || []
+    categoryDistribution.value = categories?.list || categories || []
+    adminCategories.value = categoryTree || []
     productTrend.value = trend?.list || trend || []
   } catch (error) {
     uni.showToast({ title: error.message || '后台数据加载失败', icon: 'none' })
@@ -317,6 +409,15 @@ const switchTab = (tab) => {
 
 const goPage = (url) => {
   uni.navigateTo({ url })
+}
+
+const openPrimaryCategory = (item) => {
+  if (selectedPrimaryId.value || !item?.childrenCount) return
+  selectedPrimaryId.value = item.categoryId
+}
+
+const clearSelectedPrimary = () => {
+  selectedPrimaryId.value = ''
 }
 
 const logout = () => {
@@ -354,7 +455,7 @@ const shortDate = (date) => {
 }
 
 const categoryBarStyle = (count) => {
-  const max = Math.max(...categoryDistribution.value.map((item) => Number(item.productCount || 0)), 1)
+  const max = Math.max(...categoryRows.value.map((item) => Number(item.productCount || 0)), 1)
   const width = Math.max(8, Math.round((Number(count || 0) / max) * 100))
   return `width: ${width}%;`
 }
@@ -687,6 +788,20 @@ const categoryOnSaleBarStyle = (item) => {
   background: #fff;
   box-shadow: 0 12rpx 32rpx rgba(32, 53, 43, 0.05);
   overflow: hidden;
+}
+
+.category-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.category-back {
+  flex-shrink: 0;
+  color: #23734f;
+  font-size: 24rpx;
+  font-weight: 600;
 }
 
 .category-item {
