@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>管理员-数据页原型</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #e9efec;
+      color: #20342c;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+    }
+    .shell {
+      width: min(430px, 100vw);
+      min-height: 100vh;
+      margin: 0 auto;
+      background: #f5f8f6;
+      padding: 18px 14px 88px;
+    }
+    .hero {
+      padding: 22px 20px;
+      border-radius: 18px;
+      background: #2d855f;
+      color: #fff;
+    }
+    .eyebrow {
+      display: block;
+      color: rgba(255,255,255,.72);
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+    h1 {
+      margin: 8px 0 6px;
+      font-size: 27px;
+      line-height: 1.15;
+    }
+    .hero p {
+      margin: 0;
+      color: rgba(255,255,255,.8);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 22px 2px 12px;
+      font-size: 18px;
+      font-weight: 800;
+    }
+    .section-action {
+      color: #2d855f;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .metric,
+    .panel,
+    .chart-panel,
+    .todo-card {
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 6px 18px rgba(28, 68, 52, .05);
+    }
+    .metric {
+      padding: 14px;
+      min-height: 94px;
+    }
+    .metric-label {
+      color: #738179;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .metric-value {
+      margin-top: 8px;
+      color: #172c24;
+      font-size: 27px;
+      font-weight: 850;
+      letter-spacing: .2px;
+    }
+    .metric-sub {
+      margin-top: 5px;
+      color: #8b9690;
+      font-size: 12px;
+    }
+    .metric.good .metric-value { color: #23734f; }
+    .metric.warn .metric-value { color: #c86a16; }
+    .chart-panel { padding: 15px; }
+    .chart-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+    .chart-title {
+      font-size: 16px;
+      font-weight: 800;
+    }
+    .chart-note {
+      margin-top: 4px;
+      color: #7b8881;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .pill {
+      flex-shrink: 0;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: #e7f4ec;
+      color: #23734f;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .bar-row {
+      display: grid;
+      grid-template-columns: 72px minmax(0, 1fr) 38px;
+      gap: 9px;
+      align-items: center;
+      margin: 12px 0;
+    }
+    .bar-label {
+      overflow: hidden;
+      color: #26342f;
+      font-size: 13px;
+      font-weight: 700;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .bar-track {
+      position: relative;
+      height: 12px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e9efec;
+    }
+    .bar-total,
+    .bar-sale {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      border-radius: inherit;
+    }
+    .bar-total { background: #bdd9ca; }
+    .bar-sale { background: #23734f; }
+    .bar-value {
+      color: #5d6b64;
+      font-size: 12px;
+      font-weight: 700;
+      text-align: right;
+    }
+    .category-card {
+      display: block;
+      margin-top: 13px;
+      padding: 12px;
+      border-radius: 8px;
+      background: #f8fbf9;
+      text-decoration: none;
+      color: inherit;
+    }
+    .category-card:active { background: #eef6f1; }
+    .category-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .category-meta {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+      color: #7b8881;
+      font-size: 12px;
+    }
+    .meta-num {
+      display: block;
+      margin-top: 2px;
+      color: #26342f;
+      font-size: 14px;
+      font-weight: 800;
+    }
+    .trend {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 8px;
+      align-items: end;
+      height: 150px;
+      padding-top: 8px;
+    }
+    .day {
+      display: flex;
+      min-width: 0;
+      height: 100%;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 6px;
+    }
+    .bars {
+      display: flex;
+      height: 96px;
+      align-items: flex-end;
+      gap: 3px;
+    }
+    .publish-bar,
+    .deal-bar {
+      width: 8px;
+      border-radius: 999px 999px 0 0;
+    }
+    .publish-bar { background: #23734f; }
+    .deal-bar { background: #d89235; }
+    .day-count {
+      color: #4f5e56;
+      font-size: 10px;
+      font-weight: 700;
+    }
+    .day-label {
+      color: #85918b;
+      font-size: 10px;
+      white-space: nowrap;
+    }
+    .legend {
+      display: flex;
+      gap: 14px;
+      color: #6f7c75;
+      font-size: 12px;
+    }
+    .dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      margin-right: 5px;
+      border-radius: 50%;
+      background: #23734f;
+    }
+    .dot.deal { background: #d89235; }
+    .todo-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .todo-card {
+      display: block;
+      padding: 15px;
+      text-decoration: none;
+      color: inherit;
+    }
+    .todo-label {
+      color: #718078;
+      font-size: 12px;
+    }
+    .todo-value {
+      margin-top: 8px;
+      font-size: 26px;
+      font-weight: 850;
+    }
+    .todo-value.danger { color: #c84c34; }
+    .todo-link {
+      margin-top: 8px;
+      color: #23734f;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .bottom-nav {
+      position: fixed;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      display: flex;
+      justify-content: center;
+      background: rgba(245, 248, 246, .94);
+      border-top: 1px solid #dfe7e2;
+      backdrop-filter: blur(10px);
+    }
+    .bottom-nav-inner {
+      display: grid;
+      width: min(430px, 100vw);
+      grid-template-columns: repeat(4, 1fr);
+      padding: 8px 8px 10px;
+      gap: 6px;
+    }
+    .nav-item {
+      padding: 6px 0;
+      border-radius: 8px;
+      color: #7b8881;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .nav-item.active {
+      background: #e6f3ec;
+      color: #23734f;
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <span class="eyebrow">CAU CAMPUS MARKET</span>
+      <h1>管理员 · 数据</h1>
+      <p>把首页数据收敛成可判断、可点击、可继续处理的运营面板。</p>
+      <div class="summary-grid">
+        <div class="metric good">
+          <div class="metric-label">成交金额</div>
+          <div class="metric-value">¥1,280</div>
+          <div class="metric-sub">完成订单 8 笔</div>
+        </div>
+        <div class="metric warn">
+          <div class="metric-label">待处理</div>
+          <div class="metric-value">3</div>
+          <div class="metric-sub">认证 1 · 风控 2</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="section-title">
+      <span>平台概况</span>
+      <span class="section-action">查看完整报表</span>
+    </div>
+    <section class="summary-grid">
+      <div class="metric">
+        <div class="metric-label">注册用户</div>
+        <div class="metric-value">42</div>
+        <div class="metric-sub">认证率 71%</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">在售商品</div>
+        <div class="metric-value">18</div>
+        <div class="metric-sub">总商品 27</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">浏览量</div>
+        <div class="metric-value">326</div>
+        <div class="metric-sub">收藏 49</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">平均售价</div>
+        <div class="metric-value">¥68</div>
+        <div class="metric-sub">仅作参考</div>
+      </div>
+    </section>
+
+    <div class="section-title">
+      <span>发布 / 成交趋势</span>
+      <span class="section-action">7 天</span>
+    </div>
+    <section class="chart-panel">
+      <div class="chart-head">
+        <div>
+          <div class="chart-title">近 7 天运营趋势</div>
+          <div class="chart-note">发布和成交分开显示，便于判断供给是否转化。</div>
+        </div>
+        <div class="legend">
+          <span><i class="dot"></i>发布</span>
+          <span><i class="dot deal"></i>成交</span>
+        </div>
+      </div>
+      <div class="trend" aria-label="近 7 天发布成交柱状图">
+        <div class="day"><div class="bars"><i class="publish-bar" style="height:48px"></i><i class="deal-bar" style="height:14px"></i></div><span class="day-count">4/1</span><span class="day-label">06-13</span></div>
+        <div class="day"><div class="bars"><i class="publish-bar" style="height:34px"></i><i class="deal-bar" style="height:22px"></i></div><span class="day-count">3/2</span><span class="day-label">06-14</span></div>
+        <div class="day"><div class="bars"><i class="publish-bar" style="height:60px"></i><i class="deal-bar" style="height:10px"></i></div><span class="day-count">5/1</span><span class="day-label">06-15</span></div>
+        <div class="day"><div class="bars"><i class="publish-bar" style="height:26px"></i><i class="deal-bar" style="height:26px"></i></div><span class="day-count">2/2</span><span class="day-label">06-16</span></div>
+        <div class="day"><div class="bars"><i class="publish-bar" style="height:72px"></i><i class="deal-bar" style="height:36px"></i></div><span class="day-count">6/3</span><span class="day-label">06-17</span></div>
+        <div class="day"><div class="bars"><i class="publish-bar" style="height:40px"></i><i class="deal-bar" style="height:12px"></i></div><span class="day-count">3/1</span><span class="day-label">06-18</span></div>
+        <div class="day"><div class="bars"><i class="publish-bar" style="height:88px"></i><i class="deal-bar" style="height:28px"></i></div><span class="day-count">7/2</span><span class="day-label">今天</span></div>
+      </div>
+    </section>
+
+    <div class="section-title">
+      <span>商品分类 Top 5</span>
+      <span class="section-action">二级分类</span>
+    </div>
+    <section class="chart-panel">
+      <div class="chart-head">
+        <div>
+          <div class="chart-title">直接分类商品分布</div>
+          <div class="chart-note">点击分类进入商品管理，默认筛选该分类的在售商品。</div>
+        </div>
+        <span class="pill">按在售数排序</span>
+      </div>
+
+      <a class="category-card" href="#">
+        <div class="category-top"><span>考研资料</span><span>12 件 ›</span></div>
+        <div class="bar-row"><span class="bar-label">在售占比</span><span class="bar-track"><i class="bar-total" style="width:100%"></i><i class="bar-sale" style="width:75%"></i></span><span class="bar-value">9</span></div>
+        <div class="category-meta"><span>总数<span class="meta-num">12</span></span><span>在售<span class="meta-num">9</span></span><span>均价<span class="meta-num">¥46</span></span></div>
+      </a>
+      <a class="category-card" href="#">
+        <div class="category-top"><span>台灯照明</span><span>8 件 ›</span></div>
+        <div class="bar-row"><span class="bar-label">在售占比</span><span class="bar-track"><i class="bar-total" style="width:67%"></i><i class="bar-sale" style="width:58%"></i></span><span class="bar-value">7</span></div>
+        <div class="category-meta"><span>总数<span class="meta-num">8</span></span><span>在售<span class="meta-num">7</span></span><span>均价<span class="meta-num">¥32</span></span></div>
+      </a>
+      <a class="category-card" href="#">
+        <div class="category-top"><span>票券卡券</span><span>5 件 ›</span></div>
+        <div class="bar-row"><span class="bar-label">在售占比</span><span class="bar-track"><i class="bar-total" style="width:42%"></i><i class="bar-sale" style="width:33%"></i></span><span class="bar-value">4</span></div>
+        <div class="category-meta"><span>总数<span class="meta-num">5</span></span><span>在售<span class="meta-num">4</span></span><span>均价<span class="meta-num">¥88</span></span></div>
+      </a>
+      <a class="category-card" href="#">
+        <div class="category-top"><span>耳机音响</span><span>4 件 ›</span></div>
+        <div class="bar-row"><span class="bar-label">在售占比</span><span class="bar-track"><i class="bar-total" style="width:33%"></i><i class="bar-sale" style="width:25%"></i></span><span class="bar-value">3</span></div>
+        <div class="category-meta"><span>总数<span class="meta-num">4</span></span><span>在售<span class="meta-num">3</span></span><span>均价<span class="meta-num">¥74</span></span></div>
+      </a>
+      <a class="category-card" href="#">
+        <div class="category-top"><span>宿舍用品</span><span>3 件 ›</span></div>
+        <div class="bar-row"><span class="bar-label">在售占比</span><span class="bar-track"><i class="bar-total" style="width:25%"></i><i class="bar-sale" style="width:17%"></i></span><span class="bar-value">2</span></div>
+        <div class="category-meta"><span>总数<span class="meta-num">3</span></span><span>在售<span class="meta-num">2</span></span><span>均价<span class="meta-num">¥21</span></span></div>
+      </a>
+    </section>
+
+    <div class="section-title">
+      <span>运营提醒</span>
+      <span class="section-action">去处理</span>
+    </div>
+    <section class="todo-grid">
+      <a class="todo-card" href="#">
+        <div class="todo-label">待认证审核</div>
+        <div class="todo-value danger">1</div>
+        <div class="todo-link">查看学生认证 ›</div>
+      </a>
+      <a class="todo-card" href="#">
+        <div class="todo-label">申诉 / 举报</div>
+        <div class="todo-value danger">2</div>
+        <div class="todo-link">进入风控处理 ›</div>
+      </a>
+      <a class="todo-card" href="#">
+        <div class="todo-label">待面交订单</div>
+        <div class="todo-value">5</div>
+        <div class="todo-link">查看订单 ›</div>
+      </a>
+      <a class="todo-card" href="#">
+        <div class="todo-label">已下架商品</div>
+        <div class="todo-value">4</div>
+        <div class="todo-link">筛选商品 ›</div>
+      </a>
+    </section>
+  </main>
+
+  <nav class="bottom-nav" aria-label="管理员底部导航">
+    <div class="bottom-nav-inner">
+      <div class="nav-item active">数据</div>
+      <div class="nav-item">审核</div>
+      <div class="nav-item">管理</div>
+      <div class="nav-item">日志</div>
+    </div>
+  </nav>
+</body>
+</html>
