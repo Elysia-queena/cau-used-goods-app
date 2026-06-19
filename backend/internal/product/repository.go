@@ -338,15 +338,37 @@ func (r *Repository) ListProducts(ctx context.Context, input ListProductsInput) 
 		Total:    total,
 	}, nil
 }
-func (r *Repository) IncrementViewCount(ctx context.Context, productID uint64) error {
-	result, err := r.db.ExecContext(ctx, `
+func (r *Repository) IncrementViewCount(ctx context.Context, productID uint64, viewer ProductViewer) error {
+	if viewer.Role == "ADMIN" || viewer.Role == "SUPER_ADMIN" {
+		return nil
+	}
+
+	if viewer.UserID == 0 {
+		return nil
+	}
+
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin product view count tx: %w", err)
+	}
+	defer tx.Rollback()
+
+	result, err := tx.ExecContext(ctx, `
 		UPDATE products
 		SET view_count = view_count + 1,
 		    update_time = CURRENT_TIMESTAMP
 		WHERE id = ?
 		  AND is_deleted = 0
 		  AND status = 'ON_SALE'
-	`, productID)
+		  AND seller_id <> ?
+		  AND NOT EXISTS (
+		      SELECT 1
+		      FROM browse_history
+		      WHERE user_id = ?
+		        AND product_id = ?
+		        AND create_time >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
+		  )
+	`, productID, viewer.UserID, viewer.UserID, productID)
 	if err != nil {
 		return fmt.Errorf("increment product view count: %w", err)
 	}
@@ -355,10 +377,18 @@ func (r *Repository) IncrementViewCount(ctx context.Context, productID uint64) e
 	if err != nil {
 		return fmt.Errorf("check increment product view count result: %w", err)
 	}
-	if affected == 0 {
-		return sql.ErrNoRows
+	if affected > 0 {
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO browse_history (user_id, product_id)
+			VALUES (?, ?)
+		`, viewer.UserID, productID); err != nil {
+			return fmt.Errorf("create browse history: %w", err)
+		}
 	}
 
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit product view count tx: %w", err)
+	}
 	return nil
 }
 func (r *Repository) GetProductByID(ctx context.Context, id uint64) (*Product, error) {

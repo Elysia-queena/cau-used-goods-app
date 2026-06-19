@@ -340,7 +340,12 @@ func (h *Handler) GetProductByID(c *gin.Context) {
 		return
 	}
 
-	product, err := h.service.GetProductByID(c.Request.Context(), id)
+	userID, _ := middleware.CurrentUserID(c)
+	role, _ := middleware.CurrentRole(c)
+	product, err := h.service.GetProductByID(c.Request.Context(), id, ProductViewer{
+		UserID: userID,
+		Role:   role,
+	})
 	if err != nil {
 		response.Error(c, http.StatusNotFound, response.CodeNotFound, "product not available")
 		return

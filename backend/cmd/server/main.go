@@ -114,6 +114,7 @@ func main() {
 	r.Static("/uploads", "./uploads")
 
 	authMiddleware := middleware.Auth(db.DB(), cfg.JWT.Secret)
+	optionalAuthMiddleware := middleware.OptionalAuth(db.DB(), cfg.JWT.Secret)
 	readableMiddleware := middleware.ReadableAccount(db.DB())
 	normalMiddleware := middleware.NormalAccount(db.DB())
 	verifiedMiddleware := middleware.Verified(db.DB())
@@ -133,7 +134,7 @@ func main() {
 	admin.RegisterRoutes(r, adminHandler, authMiddleware, adminMiddleware)
 	sensitive.RegisterAdminRoutes(r, sensitiveHandler, authMiddleware, adminMiddleware)
 
-	product.RegisterRoutes(r, productHandler, authMiddleware, verifiedMiddleware, adminMiddleware)
+	product.RegisterRoutes(r, productHandler, authMiddleware, optionalAuthMiddleware, verifiedMiddleware, adminMiddleware)
 	upload.RegisterRoutes(r, uploadHandler, authMiddleware)
 	ai.RegisterRoutes(r, aiHandler, authMiddleware)
 	stats.RegisterRoutes(r, statsHandler, authMiddleware, adminMiddleware)
