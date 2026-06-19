@@ -5,10 +5,25 @@
         v-model.trim="filters.keyword"
         class="search-input"
         confirm-type="search"
-        placeholder="搜索商品标题或描述"
+        placeholder="搜索商品标题、描述或分类标签"
         @confirm="search"
       />
       <button class="search-button" @click="search">搜索</button>
+    </view>
+
+    <view class="keyword-panel">
+      <text class="keyword-tip">支持输入分类标签或关键词，如“教材”“高数”“数码”。</text>
+      <view class="keyword-row">
+        <text
+          v-for="item in searchKeywordTags"
+          :key="item"
+          class="keyword-tag"
+          :class="{ active: filters.keyword === item && !filters.categoryId }"
+          @click="selectKeyword(item)"
+        >
+          {{ item }}
+        </text>
+      </view>
     </view>
 
     <scroll-view scroll-x class="category-scroll">
@@ -98,6 +113,15 @@ const filters = reactive({
 const products = computed(() => rawProducts.value.map((item) => formatProduct(item, buildCategoryMap(categories.value))))
 const finished = computed(() => rawProducts.value.length >= total.value && total.value > 0)
 const currentSortLabel = computed(() => sortOptions.find((item) => item.value === filters.sort)?.label || '最新发布')
+const searchKeywordTags = computed(() => {
+  const names = categories.value
+    .filter((item) => item.id)
+    .map((item) => item.name)
+    .filter(Boolean)
+    .slice(0, 6)
+
+  return names.length ? names : ['教材', '高数', '数码', '生活用品']
+})
 
 const loadProducts = async (reset = false) => {
   if (loading.value || (!reset && finished.value)) return
@@ -123,6 +147,12 @@ const loadProducts = async (reset = false) => {
 }
 
 const search = () => loadProducts(true)
+
+const selectKeyword = (keyword) => {
+  filters.keyword = keyword
+  filters.categoryId = 0
+  search()
+}
 
 const selectCategory = (categoryId) => {
   filters.categoryId = categoryId
@@ -200,6 +230,35 @@ onReachBottom(() => loadProducts())
   width: 132rpx;
   height: 76rpx;
   line-height: 76rpx;
+}
+
+.keyword-panel {
+  margin-top: 18rpx;
+}
+
+.keyword-tip {
+  color: #7a8580;
+  font-size: 23rpx;
+}
+
+.keyword-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 14rpx;
+}
+
+.keyword-tag {
+  padding: 10rpx 18rpx;
+  border-radius: 999rpx;
+  background: #eef5f1;
+  color: #23734f;
+  font-size: 23rpx;
+}
+
+.keyword-tag.active {
+  background: #23734f;
+  color: #fff;
 }
 
 .category-scroll {
