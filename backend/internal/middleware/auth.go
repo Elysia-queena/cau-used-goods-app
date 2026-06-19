@@ -56,6 +56,38 @@ func Auth(db *sql.DB, secret string) gin.HandlerFunc {
 	}
 }
 
+func OptionalAuth(db *sql.DB, secret string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.Next()
+			return
+		}
+
+		parts := strings.SplitN(authHeader, " ", 2)
+		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") || parts[1] == "" {
+			c.Next()
+			return
+		}
+
+		claims, err := jwtutil.Parse(secret, parts[1])
+		if err != nil || (claims.TokenType != "" && claims.TokenType != jwtutil.TokenTypeAccess) {
+			c.Next()
+			return
+		}
+
+		var tokenVersion int
+		if err := db.QueryRowContext(c.Request.Context(), `SELECT token_version FROM users WHERE id = ? LIMIT 1`, claims.UserID).Scan(&tokenVersion); err != nil || tokenVersion != claims.TokenVersion {
+			c.Next()
+			return
+		}
+
+		c.Set(ContextUserID, claims.UserID)
+		c.Set(ContextRole, claims.Role)
+		c.Next()
+	}
+}
+
 func CurrentUserID(c *gin.Context) (uint64, bool) {
 	value, ok := c.Get(ContextUserID)
 	if !ok {

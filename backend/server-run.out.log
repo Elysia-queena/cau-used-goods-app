@@ -1,0 +1,145 @@
+[GIN-debug] [WARNING] Creating an Engine instance with the Logger and Recovery middleware already attached.
+
+[GIN-debug] [WARNING] Running in "debug" mode. Switch to "release" mode in production.
+ - using env:	export GIN_MODE=release
+ - using code:	gin.SetMode(gin.ReleaseMode)
+
+[GIN-debug] GET    /uploads/*filepath        --> github.com/gin-gonic/gin.(*RouterGroup).createStaticHandler.func1 (3 handlers)
+[GIN-debug] HEAD   /uploads/*filepath        --> github.com/gin-gonic/gin.(*RouterGroup).createStaticHandler.func1 (3 handlers)
+[GIN-debug] POST   /auth/dev-login           --> cau-used-goods-app/backend/internal/auth.(*Handler).DevLogin-fm (3 handlers)
+[GIN-debug] POST   /auth/wechat-login        --> cau-used-goods-app/backend/internal/auth.(*Handler).WechatLogin-fm (3 handlers)
+[GIN-debug] POST   /auth/reactivate          --> cau-used-goods-app/backend/internal/auth.(*Handler).Reactivate-fm (3 handlers)
+[GIN-debug] GET    /users/me                 --> cau-used-goods-app/backend/internal/user.(*Handler).Me-fm (5 handlers)
+[GIN-debug] GET    /users/me/restriction     --> cau-used-goods-app/backend/internal/user.(*Handler).Restriction-fm (5 handlers)
+[GIN-debug] GET    /users/:id/public         --> cau-used-goods-app/backend/internal/user.(*Handler).PublicProfile-fm (5 handlers)
+[GIN-debug] GET    /users/:id/homepage       --> cau-used-goods-app/backend/internal/user.(*Handler).PublicHomepage-fm (5 handlers)
+[GIN-debug] PUT    /users/profile            --> cau-used-goods-app/backend/internal/user.(*Handler).UpdateProfile-fm (6 handlers)
+[GIN-debug] POST   /users/avatar             --> cau-used-goods-app/backend/internal/user.(*Handler).UploadAvatar-fm (6 handlers)
+[GIN-debug] POST   /users/student-verify     --> cau-used-goods-app/backend/internal/user.(*Handler).SubmitStudentVerification-fm (6 handlers)
+[GIN-debug] GET    /users/student-verify     --> cau-used-goods-app/backend/internal/user.(*Handler).StudentVerification-fm (5 handlers)
+[GIN-debug] POST   /users/cancel             --> cau-used-goods-app/backend/internal/user.(*Handler).CancelAccount-fm (6 handlers)
+[GIN-debug] GET    /admin/users              --> cau-used-goods-app/backend/internal/user.(*Handler).ListAdminUsers-fm (5 handlers)
+[GIN-debug] GET    /admin/users/student-verifications --> cau-used-goods-app/backend/internal/user.(*Handler).ListStudentVerifications-fm (5 handlers)
+[GIN-debug] GET    /admin/users/:id          --> cau-used-goods-app/backend/internal/user.(*Handler).AdminUserDetail-fm (5 handlers)
+[GIN-debug] PUT    /admin/users/:id/student-verify --> cau-used-goods-app/backend/internal/user.(*Handler).ReviewStudentVerification-fm (5 handlers)
+[GIN-debug] PUT    /admin/users/:id/status   --> cau-used-goods-app/backend/internal/user.(*Handler).UpdateAccountStatus-fm (5 handlers)
+[GIN-debug] PUT    /admin/users/:id/role     --> cau-used-goods-app/backend/internal/user.(*Handler).UpdateRole-fm (6 handlers)
+[GIN-debug] GET    /admin/users/:id/products --> cau-used-goods-app/backend/internal/user.(*Handler).ListUserProducts-fm (5 handlers)
+[GIN-debug] GET    /admin/users/:id/orders   --> cau-used-goods-app/backend/internal/user.(*Handler).ListUserOrders-fm (5 handlers)
+[GIN-debug] GET    /admin/users/:id/reports  --> cau-used-goods-app/backend/internal/user.(*Handler).ListUserReports-fm (5 handlers)
+[GIN-debug] GET    /admin/users/:id/appeals  --> cau-used-goods-app/backend/internal/user.(*Handler).ListUserAppeals-fm (5 handlers)
+[GIN-debug] GET    /admin/users/:id/reviews  --> cau-used-goods-app/backend/internal/user.(*Handler).ListUserReviews-fm (5 handlers)
+[GIN-debug] GET    /admin/users/:id/logs     --> cau-used-goods-app/backend/internal/user.(*Handler).ListUserLogs-fm (5 handlers)
+[GIN-debug] POST   /orders                   --> cau-used-goods-app/backend/internal/order.(*Handler).Create-fm (6 handlers)
+[GIN-debug] GET    /orders                   --> cau-used-goods-app/backend/internal/order.(*Handler).ListMyOrders-fm (5 handlers)
+[GIN-debug] GET    /orders/:id               --> cau-used-goods-app/backend/internal/order.(*Handler).GetByID-fm (5 handlers)
+[GIN-debug] POST   /orders/:id/confirm       --> cau-used-goods-app/backend/internal/order.(*Handler).Confirm-fm (6 handlers)
+[GIN-debug] POST   /orders/:id/cancel        --> cau-used-goods-app/backend/internal/order.(*Handler).Cancel-fm (6 handlers)
+[GIN-debug] POST   /orders/:id/complete      --> cau-used-goods-app/backend/internal/order.(*Handler).Complete-fm (6 handlers)
+[GIN-debug] GET    /admin/orders             --> cau-used-goods-app/backend/internal/order.(*Handler).AdminListOrders-fm (5 handlers)
+[GIN-debug] POST   /admin/orders/:id/exception-close --> cau-used-goods-app/backend/internal/order.(*Handler).AdminExceptionClose-fm (5 handlers)
+[GIN-debug] PUT    /admin/orders/:id/status  --> cau-used-goods-app/backend/internal/order.(*Handler).AdminUpdateStatus-fm (5 handlers)
+[GIN-debug] POST   /favorites                --> cau-used-goods-app/backend/internal/favorite.(*Handler).Add-fm (5 handlers)
+[GIN-debug] GET    /favorites                --> cau-used-goods-app/backend/internal/favorite.(*Handler).List-fm (5 handlers)
+[GIN-debug] GET    /favorites/check          --> cau-used-goods-app/backend/internal/favorite.(*Handler).Check-fm (5 handlers)
+[GIN-debug] DELETE /favorites/:productId     --> cau-used-goods-app/backend/internal/favorite.(*Handler).Remove-fm (5 handlers)
+[GIN-debug] GET    /products/:id/reviews     --> cau-used-goods-app/backend/internal/review.(*Handler).ListByProduct-fm (3 handlers)
+[GIN-debug] GET    /sellers/:id/reviews      --> cau-used-goods-app/backend/internal/review.(*Handler).ListBySeller-fm (3 handlers)
+[GIN-debug] GET    /reviews/:id              --> cau-used-goods-app/backend/internal/review.(*Handler).GetByID-fm (3 handlers)
+[GIN-debug] POST   /reviews                  --> cau-used-goods-app/backend/internal/review.(*Handler).Create-fm (5 handlers)
+[GIN-debug] POST   /reports                  --> cau-used-goods-app/backend/internal/report.(*Handler).Create-fm (5 handlers)
+[GIN-debug] GET    /reports/my               --> cau-used-goods-app/backend/internal/report.(*Handler).ListMyReports-fm (5 handlers)
+[GIN-debug] GET    /reports/:id              --> cau-used-goods-app/backend/internal/report.(*Handler).GetByID-fm (5 handlers)
+[GIN-debug] POST   /reports/:id/close        --> cau-used-goods-app/backend/internal/report.(*Handler).Close-fm (5 handlers)
+[GIN-debug] GET    /admin/reports            --> cau-used-goods-app/backend/internal/report.(*Handler).ListAll-fm (5 handlers)
+[GIN-debug] POST   /admin/reports/:id/processing --> cau-used-goods-app/backend/internal/report.(*Handler).MarkProcessing-fm (5 handlers)
+[GIN-debug] POST   /admin/reports/:id/handle --> cau-used-goods-app/backend/internal/report.(*Handler).Handle-fm (5 handlers)
+[GIN-debug] GET    /messages                 --> cau-used-goods-app/backend/internal/message.(*Handler).List-fm (5 handlers)
+[GIN-debug] GET    /messages/unread-count    --> cau-used-goods-app/backend/internal/message.(*Handler).UnreadCount-fm (5 handlers)
+[GIN-debug] GET    /messages/:id             --> cau-used-goods-app/backend/internal/message.(*Handler).GetByID-fm (5 handlers)
+[GIN-debug] PUT    /messages/read-all        --> cau-used-goods-app/backend/internal/message.(*Handler).MarkAllRead-fm (5 handlers)
+[GIN-debug] PUT    /messages/:id/read        --> cau-used-goods-app/backend/internal/message.(*Handler).MarkRead-fm (5 handlers)
+[GIN-debug] DELETE /messages/:id             --> cau-used-goods-app/backend/internal/message.(*Handler).Delete-fm (5 handlers)
+[GIN-debug] DELETE /messages                 --> cau-used-goods-app/backend/internal/message.(*Handler).DeleteAll-fm (5 handlers)
+[GIN-debug] POST   /chat/conversations       --> cau-used-goods-app/backend/internal/chat.(*Handler).CreateOrGetConversation-fm (6 handlers)
+[GIN-debug] GET    /chat/conversations       --> cau-used-goods-app/backend/internal/chat.(*Handler).ListConversations-fm (5 handlers)
+[GIN-debug] GET    /chat/conversations/:id/messages --> cau-used-goods-app/backend/internal/chat.(*Handler).ListMessages-fm (5 handlers)
+[GIN-debug] POST   /chat/conversations/:id/messages --> cau-used-goods-app/backend/internal/chat.(*Handler).SendMessage-fm (6 handlers)
+[GIN-debug] PUT    /chat/conversations/:id/read --> cau-used-goods-app/backend/internal/chat.(*Handler).MarkRead-fm (5 handlers)
+[GIN-debug] DELETE /chat/conversations/:id   --> cau-used-goods-app/backend/internal/chat.(*Handler).HideConversation-fm (5 handlers)
+[GIN-debug] GET    /chat/conversations/:id/product --> cau-used-goods-app/backend/internal/chat.(*Handler).GetConversationProduct-fm (5 handlers)
+[GIN-debug] POST   /appeals                  --> cau-used-goods-app/backend/internal/appeal.(*Handler).Create-fm (5 handlers)
+[GIN-debug] GET    /appeals/my               --> cau-used-goods-app/backend/internal/appeal.(*Handler).ListMy-fm (5 handlers)
+[GIN-debug] GET    /appeals/:id              --> cau-used-goods-app/backend/internal/appeal.(*Handler).GetByID-fm (5 handlers)
+[GIN-debug] POST   /appeals/:id/close        --> cau-used-goods-app/backend/internal/appeal.(*Handler).Close-fm (5 handlers)
+[GIN-debug] GET    /admin/appeals            --> cau-used-goods-app/backend/internal/appeal.(*Handler).AdminList-fm (5 handlers)
+[GIN-debug] GET    /admin/appeals/:id        --> cau-used-goods-app/backend/internal/appeal.(*Handler).AdminGetByID-fm (5 handlers)
+[GIN-debug] POST   /admin/appeals/:id/processing --> cau-used-goods-app/backend/internal/appeal.(*Handler).AdminMarkProcessing-fm (5 handlers)
+[GIN-debug] POST   /admin/appeals/:id/handle --> cau-used-goods-app/backend/internal/appeal.(*Handler).AdminHandle-fm (5 handlers)
+[GIN-debug] GET    /admin/announcements      --> cau-used-goods-app/backend/internal/admin.(*Handler).ListAnnouncements-fm (5 handlers)
+[GIN-debug] POST   /admin/announcements      --> cau-used-goods-app/backend/internal/admin.(*Handler).CreateAnnouncement-fm (5 handlers)
+[GIN-debug] PUT    /admin/announcements/:id  --> cau-used-goods-app/backend/internal/admin.(*Handler).UpdateAnnouncement-fm (5 handlers)
+[GIN-debug] PUT    /admin/announcements/:id/status --> cau-used-goods-app/backend/internal/admin.(*Handler).UpdateAnnouncementStatus-fm (5 handlers)
+[GIN-debug] DELETE /admin/announcements/:id  --> cau-used-goods-app/backend/internal/admin.(*Handler).DeleteAnnouncement-fm (5 handlers)
+[GIN-debug] GET    /admin/logs               --> cau-used-goods-app/backend/internal/admin.(*Handler).ListLogs-fm (5 handlers)
+[GIN-debug] GET    /admin/sensitive-words    --> cau-used-goods-app/backend/internal/sensitive.(*Handler).ListWords-fm (5 handlers)
+[GIN-debug] POST   /admin/sensitive-words    --> cau-used-goods-app/backend/internal/sensitive.(*Handler).CreateWord-fm (5 handlers)
+[GIN-debug] PUT    /admin/sensitive-words/:id --> cau-used-goods-app/backend/internal/sensitive.(*Handler).UpdateWord-fm (5 handlers)
+[GIN-debug] DELETE /admin/sensitive-words/:id --> cau-used-goods-app/backend/internal/sensitive.(*Handler).DeleteWord-fm (5 handlers)
+[GIN-debug] GET    /categories               --> cau-used-goods-app/backend/internal/product.(*Handler).ListCategories-fm (3 handlers)
+[GIN-debug] GET    /products                 --> cau-used-goods-app/backend/internal/product.(*Handler).ListProducts-fm (3 handlers)
+[GIN-debug] GET    /products/:id             --> cau-used-goods-app/backend/internal/product.(*Handler).GetProductByID-fm (4 handlers)
+[GIN-debug] GET    /admin/categories         --> cau-used-goods-app/backend/internal/product.(*Handler).AdminListCategories-fm (5 handlers)
+[GIN-debug] POST   /admin/categories         --> cau-used-goods-app/backend/internal/product.(*Handler).AdminCreateCategory-fm (5 handlers)
+[GIN-debug] PUT    /admin/categories/:id     --> cau-used-goods-app/backend/internal/product.(*Handler).AdminUpdateCategory-fm (5 handlers)
+[GIN-debug] PUT    /admin/categories/:id/status --> cau-used-goods-app/backend/internal/product.(*Handler).AdminUpdateCategoryStatus-fm (5 handlers)
+[GIN-debug] DELETE /admin/categories/:id     --> cau-used-goods-app/backend/internal/product.(*Handler).AdminDeleteCategory-fm (5 handlers)
+[GIN-debug] GET    /admin/products           --> cau-used-goods-app/backend/internal/product.(*Handler).AdminListProducts-fm (5 handlers)
+[GIN-debug] PUT    /admin/products/:id/status --> cau-used-goods-app/backend/internal/product.(*Handler).AdminUpdateProductStatus-fm (5 handlers)
+[GIN-debug] POST   /products                 --> cau-used-goods-app/backend/internal/product.(*Handler).CreateProduct-fm (5 handlers)
+[GIN-debug] GET    /products/my              --> cau-used-goods-app/backend/internal/product.(*Handler).ListMyProducts-fm (4 handlers)
+[GIN-debug] PUT    /products/:id             --> cau-used-goods-app/backend/internal/product.(*Handler).UpdateProduct-fm (5 handlers)
+[GIN-debug] PUT    /products/:id/status      --> cau-used-goods-app/backend/internal/product.(*Handler).UpdateProductStatus-fm (5 handlers)
+[GIN-debug] POST   /products/:id/images      --> cau-used-goods-app/backend/internal/product.(*Handler).AddProductImages-fm (5 handlers)
+[GIN-debug] DELETE /products/:id             --> cau-used-goods-app/backend/internal/product.(*Handler).DeleteProduct-fm (5 handlers)
+[GIN-debug] DELETE /products/:id/images/:imageId --> cau-used-goods-app/backend/internal/product.(*Handler).DeleteProductImage-fm (5 handlers)
+[GIN-debug] PUT    /products/:id/images      --> cau-used-goods-app/backend/internal/product.(*Handler).ReplaceProductImages-fm (5 handlers)
+[GIN-debug] POST   /upload/image             --> cau-used-goods-app/backend/internal/upload.(*Handler).UploadImage-fm (4 handlers)
+[GIN-debug] POST   /ai/optimize-product      --> cau-used-goods-app/backend/internal/ai.(*Handler).OptimizeProduct-fm (4 handlers)
+[GIN-debug] GET    /stats/products/overview  --> cau-used-goods-app/backend/internal/stats.(*Handler).ProductOverview-fm (5 handlers)
+[GIN-debug] GET    /stats/products/category-distribution --> cau-used-goods-app/backend/internal/stats.(*Handler).CategoryDistribution-fm (5 handlers)
+[GIN-debug] GET    /stats/products/status-distribution --> cau-used-goods-app/backend/internal/stats.(*Handler).StatusDistribution-fm (5 handlers)
+[GIN-debug] GET    /stats/products/trend     --> cau-used-goods-app/backend/internal/stats.(*Handler).ProductTrend-fm (5 handlers)
+[GIN-debug] GET    /stats/orders/overview    --> cau-used-goods-app/backend/internal/stats.(*Handler).OrderOverview-fm (5 handlers)
+[GIN-debug] GET    /stats/users/overview     --> cau-used-goods-app/backend/internal/stats.(*Handler).UserOverview-fm (5 handlers)
+[GIN-debug] GET    /stats/reports/overview   --> cau-used-goods-app/backend/internal/stats.(*Handler).ReportOverview-fm (5 handlers)
+[GIN-debug] GET    /stats/appeals/overview   --> cau-used-goods-app/backend/internal/stats.(*Handler).AppealOverview-fm (5 handlers)
+[GIN-debug] [WARNING] You trusted all proxies, this is NOT safe. We recommend you to set a value.
+Please check https://pkg.go.dev/github.com/gin-gonic/gin#readme-don-t-trust-all-proxies for details.
+[GIN-debug] Listening and serving HTTP on :8080
+[GIN] 2026/06/19 - 18:15:15 | 200 |      5.9995ms |       127.0.0.1 | GET      "/users/me"
+[GIN] 2026/06/19 - 18:15:17 | 200 |      4.3675ms |       127.0.0.1 | GET      "/messages"
+[GIN] 2026/06/19 - 18:15:18 | 200 |      5.8708ms |       127.0.0.1 | GET      "/chat/conversations?page=1&pageSize=50"
+[GIN] 2026/06/19 - 18:15:19 | 200 |     26.6795ms |       127.0.0.1 | GET      "/categories"
+[GIN] 2026/06/19 - 18:15:19 | 200 |      2.1354ms |       127.0.0.1 | GET      "/products?page=1&pageSize=8&sort=newest&categoryId=1"
+[GIN] 2026/06/19 - 18:15:19 | 200 |      1.7499ms |       127.0.0.1 | GET      "/products?page=1&pageSize=8&sort=newest&categoryId=13"
+[GIN] 2026/06/19 - 18:15:19 | 200 |       930.9µs |       127.0.0.1 | GET      "/products?page=1&pageSize=8&sort=newest&categoryId=14"
+[GIN] 2026/06/19 - 18:15:19 | 200 |       1.213ms |       127.0.0.1 | GET      "/products?page=1&pageSize=8&sort=newest&categoryId=15"
+[GIN] 2026/06/19 - 18:15:19 | 200 |      1.1735ms |       127.0.0.1 | GET      "/products?page=1&pageSize=8&sort=newest&categoryId=16"
+[GIN] 2026/06/19 - 18:15:19 | 200 |      1.1304ms |       127.0.0.1 | GET      "/products?page=1&pageSize=8&sort=newest&categoryId=17"
+[GIN] 2026/06/19 - 18:15:19 | 200 |      1.6379ms |       127.0.0.1 | GET      "/products?page=1&pageSize=8&sort=newest&categoryId=18"
+[GIN] 2026/06/19 - 18:15:19 | 200 |      2.1491ms |       127.0.0.1 | GET      "/products?page=1&pageSize=8&sort=newest&categoryId=20"
+[GIN] 2026/06/19 - 18:15:19 | 200 |      4.5399ms |       127.0.0.1 | GET      "/products?page=1&pageSize=8&sort=newest&categoryId=19"
+[GIN] 2026/06/19 - 18:15:19 | 200 |      1.3264ms |       127.0.0.1 | GET      "/products?page=1&pageSize=8&sort=newest&categoryId=21"
+[GIN] 2026/06/19 - 18:15:19 | 200 |       1.703ms |       127.0.0.1 | GET      "/products?page=1&pageSize=8&sort=newest&categoryId=22"
+[GIN] 2026/06/19 - 18:15:34 | 200 |       585.5µs |       127.0.0.1 | GET      "/categories"
+[GIN] 2026/06/19 - 18:17:40 | 200 |      2.1038ms |       127.0.0.1 | GET      "/users/me"
+[GIN] 2026/06/19 - 18:17:42 | 200 |      2.9998ms |       127.0.0.1 | GET      "/messages"
+[GIN] 2026/06/19 - 18:17:42 | 200 |      3.0409ms |       127.0.0.1 | GET      "/chat/conversations?page=1&pageSize=50"
+[GIN] 2026/06/19 - 18:17:44 | 200 |      2.0515ms |       127.0.0.1 | GET      "/users/me"
+[GIN] 2026/06/19 - 18:17:50 | 200 |      3.9156ms |       127.0.0.1 | GET      "/chat/conversations?page=1&pageSize=50"
+[GIN] 2026/06/19 - 18:17:50 | 200 |      27.431ms |       127.0.0.1 | GET      "/messages"
+[GIN] 2026/06/19 - 18:17:51 | 200 |      2.3514ms |       127.0.0.1 | GET      "/users/me"
+[GIN] 2026/06/19 - 18:18:28 | 200 |      3.9861ms |       127.0.0.1 | GET      "/messages"
+[GIN] 2026/06/19 - 18:18:28 | 200 |     24.4387ms |       127.0.0.1 | GET      "/chat/conversations?page=1&pageSize=50"
+[GIN] 2026/06/19 - 18:18:40 | 200 |      1.8823ms |       127.0.0.1 | GET      "/users/me"

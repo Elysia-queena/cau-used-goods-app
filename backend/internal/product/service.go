@@ -219,8 +219,13 @@ func (s *Service) ListProducts(ctx context.Context, input ProductListInput) (*Pr
 	})
 }
 
-func (s *Service) GetProductByID(ctx context.Context, id uint64) (*Product, error) {
-	if err := s.repo.IncrementViewCount(ctx, id); err != nil {
+type ProductViewer struct {
+	UserID uint64
+	Role   string
+}
+
+func (s *Service) GetProductByID(ctx context.Context, id uint64, viewer ProductViewer) (*Product, error) {
+	if err := s.repo.IncrementViewCount(ctx, id, viewer); err != nil {
 		return nil, err
 	}
 	return s.repo.GetProductByID(ctx, id)

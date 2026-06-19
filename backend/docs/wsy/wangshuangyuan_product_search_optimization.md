@@ -155,13 +155,7 @@ GET /products?keyword=教材&categoryId=1&conditionLevel=九成新&sort=price_as
 backend/internal/product/repository.go
 ```
 
-前端：
-
-```text
-frontend/cau-used-goods-uni/pages/search/search.vue
-```
-
-前端仅调整搜索框提示文案，提示用户可搜索标题、描述或分类标签。
+本次未修改前端文件。前端仍通过原有 `keyword` 参数调用商品列表接口，搜索能力由后端增强。
 
 ## 七、建议验证场景
 
