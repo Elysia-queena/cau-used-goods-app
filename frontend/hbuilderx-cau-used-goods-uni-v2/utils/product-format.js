@@ -1,4 +1,4 @@
-const BASE_URL = 'http://127.0.0.1:8080'
+const BASE_URL = 'http://62.234.163.176:7001'
 const INVALID_TEST_IMAGES = [
   '1780413573623001600.png',
   '1781224931041565400.png',

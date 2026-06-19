@@ -97,11 +97,11 @@ func (r *Repository) ProductOverview(ctx context.Context) (*ProductOverview, err
 	err := r.db.QueryRowContext(ctx, `
 		SELECT
 			COUNT(*) AS total_products,
-			SUM(CASE WHEN status = 'ON_SALE' AND is_deleted = 0 THEN 1 ELSE 0 END) AS on_sale_products,
-			SUM(CASE WHEN status = 'OFF_SHELF' AND is_deleted = 0 THEN 1 ELSE 0 END) AS off_shelf_products,
-			SUM(CASE WHEN status = 'LOCKED' AND is_deleted = 0 THEN 1 ELSE 0 END) AS locked_products,
-			SUM(CASE WHEN status = 'SOLD' AND is_deleted = 0 THEN 1 ELSE 0 END) AS sold_products,
-			SUM(CASE WHEN status = 'DELETED' OR is_deleted = 1 THEN 1 ELSE 0 END) AS deleted_products,
+			COALESCE(SUM(CASE WHEN status = 'ON_SALE' AND is_deleted = 0 THEN 1 ELSE 0 END), 0) AS on_sale_products,
+			COALESCE(SUM(CASE WHEN status = 'OFF_SHELF' AND is_deleted = 0 THEN 1 ELSE 0 END), 0) AS off_shelf_products,
+			COALESCE(SUM(CASE WHEN status = 'LOCKED' AND is_deleted = 0 THEN 1 ELSE 0 END), 0) AS locked_products,
+			COALESCE(SUM(CASE WHEN status = 'SOLD' AND is_deleted = 0 THEN 1 ELSE 0 END), 0) AS sold_products,
+			COALESCE(SUM(CASE WHEN status = 'DELETED' OR is_deleted = 1 THEN 1 ELSE 0 END), 0) AS deleted_products,
 			COALESCE(SUM(view_count), 0) AS total_views,
 			COALESCE(SUM(favorite_count), 0) AS total_favorites,
 			COALESCE(AVG(CASE WHEN is_deleted = 0 THEN price ELSE NULL END), 0) AS average_price

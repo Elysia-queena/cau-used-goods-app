@@ -49,3 +49,24 @@ export const createReport = async (data) => {
   })
 }
 export const getReports = () => request({ url: '/reports/my' })
+export const createAppeal = async (data) => {
+  const evidenceUrls = []
+  for (const filePath of data.images || []) evidenceUrls.push(await uploadImage(filePath))
+  return request({
+    url: '/appeals',
+    method: 'POST',
+    data: {
+      targetType: data.targetType,
+      targetId: Number(data.targetId),
+      reason: data.reason,
+      evidenceUrls
+    }
+  })
+}
+export const getAppeals = (params = {}) => request({ url: '/appeals/my', data: params })
+export const getAppeal = (id) => request({ url: `/appeals/${id}` })
+export const closeAppeal = (id, closeReason = '') => request({
+  url: `/appeals/${id}/close`,
+  method: 'POST',
+  data: { closeReason }
+})

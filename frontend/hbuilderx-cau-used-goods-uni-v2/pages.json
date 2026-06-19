@@ -159,6 +159,24 @@
       }
     },
     {
+      "path": "pages/interaction/appeal",
+      "style": {
+        "navigationBarTitleText": "提交申诉"
+      }
+    },
+    {
+      "path": "pages/interaction/appeal-list",
+      "style": {
+        "navigationBarTitleText": "我的申诉"
+      }
+    },
+    {
+      "path": "pages/interaction/appeal-detail",
+      "style": {
+        "navigationBarTitleText": "申诉详情"
+      }
+    },
+    {
       "path": "pages/admin/admin",
       "style": {
         "navigationBarTitleText": "后台管理"

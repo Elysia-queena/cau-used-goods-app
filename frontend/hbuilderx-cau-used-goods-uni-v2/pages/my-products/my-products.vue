@@ -25,6 +25,7 @@
         <view class="actions">
           <button v-if="item.status === 'ON_SALE'" class="action muted-action" @click="changeStatus(item, 'OFF_SHELF')">下架</button>
           <button v-if="item.status === 'OFF_SHELF'" class="action primary-action" @click="changeStatus(item, 'ON_SALE')">上架</button>
+          <button v-if="item.status !== 'ON_SALE'" class="action warning-action" @click="appealProduct(item)">申诉</button>
           <button v-if="canEdit(item)" class="action" @click="editProduct(item)">编辑</button>
           <button v-if="canEdit(item)" class="action danger-action" @click="deleteMyProduct(item)">删除</button>
           <button class="action" @click="openDetail(item.id)">查看</button>
@@ -80,6 +81,10 @@ const editProduct = (item) => {
   uni.setStorageSync('PUBLISH_EDIT_PRODUCT_DATA', item)
   uni.setStorageSync('PUBLISH_EDIT_INTENT', '1')
   uni.switchTab({ url: '/pages/publish/publish' })
+}
+
+const appealProduct = (item) => {
+  uni.navigateTo({ url: `/pages/interaction/appeal?targetType=PRODUCT&targetId=${item.id}` })
 }
 
 const changeStatus = (item, status) => {
@@ -146,6 +151,7 @@ onPullDownRefresh(loadData)
 .action { min-width: 104rpx; height: 58rpx; padding: 0 18rpx; border-radius: 999rpx; background: #edf4f1; color: #23734f; font-size: 24rpx; line-height: 58rpx; }
 .muted-action { background: #f4f1ed; color: #9a7745; }
 .primary-action { background: #23734f; color: #fff; }
+.warning-action { background: #fff7e6; color: #a96500; }
 .danger-action { background: #fff1ef; color: #d85c45; }
 .empty { margin-top: 140rpx; padding: 44rpx 28rpx; border-radius: 18rpx; background: #fff; text-align: center; }
 .empty-title { margin-bottom: 12rpx; color: #26342f; font-size: 32rpx; font-weight: 700; }
