@@ -191,6 +191,16 @@ async function loadSellerProfile() {
   }
 }
 
+async function loadFavoriteState(id) {
+  isFavorite.value = false
+  if (!getToken() || !isVerifiedUser() || isOwnProduct.value) return
+  try {
+    isFavorite.value = Boolean((await checkFavorite(id)).favorited)
+  } catch (error) {
+    isFavorite.value = false
+  }
+}
+
 async function toggleFavorite() {
   if (!ensureVerified()) return
   if (isOwnProduct.value) return toast('不能收藏自己的商品')
@@ -295,15 +305,14 @@ onLoad(async (options) => {
     addBrowseHistory(product.value)
     failedImages.value = []
     await loadSellerProfile()
-    if (getToken() && !isOwnProduct.value) {
-      isFavorite.value = (await checkFavorite(id)).favorited
-    }
+    await loadFavoriteState(id)
   } catch (error) {
     const cached = uni.getStorageSync(`product-detail-cache-${id}`)
     if (cached) {
       product.value = cached
       failedImages.value = []
       await loadSellerProfile()
+      await loadFavoriteState(id)
       if (!readonlyMode.value) toast('商品暂不可查看，显示最近一次详情')
       return
     }

@@ -1,9 +1,9 @@
 ﻿<template>
   <view class="page">
     <view v-if="!canPublish" class="locked-card">
-      <view class="locked-title">先完成认证，再发布闲置</view>
-      <view class="locked-desc">你的学生认证尚未通过，发布表单已暂时关闭。认证通过后即可发布商品。</view>
-      <button class="locked-button" @click="goStudentAuth">去学生认证</button>
+      <view class="locked-title">{{ lockedTitle }}</view>
+      <view class="locked-desc">{{ lockedDesc }}</view>
+      <button v-if="showStudentAuthButton" class="locked-button" @click="goStudentAuth">{{ lockedButtonText }}</button>
     </view>
 
     <view v-else>
@@ -171,8 +171,9 @@ import {
   uploadProductImage
 } from '../../api/product'
 import { getCurrentUser } from '../../api/auth'
-import { getToken, setUser } from '../../utils/auth'
+import { getToken, getUser, setUser } from '../../utils/auth'
 import { normalizeImage } from '../../utils/product-format'
+import { accountStatusOf, userTradeRestrictionMessage } from '../../utils/user-format'
 
 const MAX_SIZE = 5 * 1024 * 1024
 const MAX_IMAGES = 9
@@ -185,6 +186,8 @@ const selectedPrimaryId = ref('')
 const selectedChildName = ref('')
 const submitting = ref(false)
 const canPublish = ref(false)
+const publishLockedMessage = ref('\u672a\u5b8c\u6210\u5b66\u751f\u8ba4\u8bc1')
+const publishLockedType = ref('auth')
 const previewImages = ref([])
 const editProductId = ref('')
 const originalImages = ref([])
@@ -256,6 +259,18 @@ const cropImageStyle = computed(() => ({
   transform: `translate(${cropState.offsetX}px, ${cropState.offsetY}px)`
 }))
 const editMode = computed(() => !!editProductId.value)
+const lockedTitle = computed(() => {
+  if (publishLockedType.value === 'account') return '\u8d26\u53f7\u72b6\u6001\u53d7\u9650'
+  if (publishLockedType.value === 'login') return '\u8bf7\u5148\u767b\u5f55'
+  return '\u5148\u5b8c\u6210\u8ba4\u8bc1\uff0c\u518d\u53d1\u5e03\u95f2\u7f6e'
+})
+const lockedDesc = computed(() => {
+  if (publishLockedType.value === 'account') return `${publishLockedMessage.value}\u3002\u5982\u9700\u7533\u8bc9\uff0c\u8bf7\u8054\u7cfb\u5e73\u53f0\u7ba1\u7406\u5458\u5904\u7406\u3002`
+  if (publishLockedType.value === 'login') return '\u767b\u5f55\u540e\u624d\u80fd\u53d1\u5e03\u548c\u7ba1\u7406\u95f2\u7f6e\u5546\u54c1\u3002'
+  return '\u4f60\u7684\u5b66\u751f\u8ba4\u8bc1\u5c1a\u672a\u901a\u8fc7\uff0c\u53d1\u5e03\u8868\u5355\u5df2\u6682\u65f6\u5173\u95ed\u3002\u8ba4\u8bc1\u901a\u8fc7\u540e\u5373\u53ef\u53d1\u5e03\u5546\u54c1\u3002'
+})
+const showStudentAuthButton = computed(() => publishLockedType.value === 'auth')
+const lockedButtonText = computed(() => '\u53bb\u5b66\u751f\u8ba4\u8bc1')
 
 const resetForm = () => {
   editProductId.value = ''
@@ -327,26 +342,53 @@ const isVerified = (user) => {
   return status === 'VERIFIED'
 }
 
+const normalizeProductError = (error, action = 'publish') => {
+  const message = String(error?.message || '')
+  if (/BANNED|PERM_BANNED|PERMANENT_BANNED|\u5c01\u7981/i.test(message)) return userTradeRestrictionMessage('BANNED', action)
+  if (/DISABLED|\u7981\u7528/i.test(message)) return userTradeRestrictionMessage('DISABLED', action)
+  if (/CANCELED|CANCELLED|\u6ce8\u9500/i.test(message)) return userTradeRestrictionMessage('CANCELED', action)
+  if (/403|FORBIDDEN|PERMISSION|VERIFY|VERIFIED|\u6743\u9650/i.test(message)) return action === 'sale' ? '\u8d26\u53f7\u72b6\u6001\u4e0d\u6ee1\u8db3\u4e0a\u67b6\u6761\u4ef6' : '\u8d26\u53f7\u72b6\u6001\u4e0d\u6ee1\u8db3\u53d1\u5e03\u6761\u4ef6'
+  return message || (action === 'sale' ? '\u4e0a\u67b6\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5' : '\u53d1\u5e03\u5931\u8d25')
+}
+
 const loadPublishState = async () => {
   if (!getToken()) {
     canPublish.value = false
-    uni.showToast({ title: '请先登录', icon: 'none' })
+    publishLockedType.value = 'login'
+    publishLockedMessage.value = '\u8bf7\u5148\u767b\u5f55'
+    uni.showToast({ title: publishLockedMessage.value, icon: 'none' })
     return
   }
 
   try {
-    const current = await getCurrentUser()
+    const cached = getUser() || {}
+    const current = { ...cached, ...(await getCurrentUser()) }
     setUser(current)
-    canPublish.value = isVerified(current)
-    if (!canPublish.value) {
-          uni.showToast({ title: '未完成学生认证', icon: 'none' })
+    const restrictionMessage = userTradeRestrictionMessage(accountStatusOf(current), 'publish')
+    if (restrictionMessage) {
+      canPublish.value = false
+      publishLockedType.value = 'account'
+      publishLockedMessage.value = restrictionMessage
+      toast(restrictionMessage)
       return
     }
+    canPublish.value = isVerified(current)
+    if (!canPublish.value) {
+      publishLockedType.value = 'auth'
+      publishLockedMessage.value = '\u672a\u5b8c\u6210\u5b66\u751f\u8ba4\u8bc1'
+      uni.showToast({ title: publishLockedMessage.value, icon: 'none' })
+      return
+    }
+    publishLockedType.value = ''
+    publishLockedMessage.value = ''
     categories.value = normalizeCategories(await listCategories())
     if (!imageFlowActive.value) applyEditState()
   } catch (error) {
     canPublish.value = false
-    toast(error.message || '加载失败')
+    const cachedRestriction = userTradeRestrictionMessage(accountStatusOf(getUser() || {}), 'publish')
+    publishLockedType.value = 'account'
+    publishLockedMessage.value = cachedRestriction || normalizeProductError(error, 'publish')
+    toast(publishLockedMessage.value || '\u52a0\u8f7d\u5931\u8d25')
   }
 }
 
@@ -546,7 +588,7 @@ const cropAndUploadImage = async (file, loadingTitle = '上传裁剪图中') => 
 }
 
 const replaceImage = async (index) => {
-  if (!canPublish.value) return toast('未完成学生认证')
+  if (!canPublish.value) return toast(publishLockedMessage.value || '\u672a\u5b8c\u6210\u5b66\u751f\u8ba4\u8bc1')
   imageFlowActive.value = true
   try {
     const files = await chooseImageFiles(1)
@@ -564,7 +606,7 @@ const replaceImage = async (index) => {
 }
 
 const chooseImages = async () => {
-  if (!canPublish.value) return toast('未完成学生认证')
+  if (!canPublish.value) return toast(publishLockedMessage.value || '\u672a\u5b8c\u6210\u5b66\u751f\u8ba4\u8bc1')
   const remaining = MAX_IMAGES - form.images.length
   if (remaining <= 0) return toast(`最多上传 ${MAX_IMAGES} 张商品图片`)
 
@@ -589,7 +631,7 @@ const chooseImages = async () => {
 }
 
 const optimizeTitle = async () => {
-  if (!canPublish.value) return toast('未完成学生认证')
+  if (!canPublish.value) return toast(publishLockedMessage.value || '\u672a\u5b8c\u6210\u5b66\u751f\u8ba4\u8bc1')
   if (!form.title) return toast('请先填写一个基础标题')
   try {
     uni.showLoading({ title: 'AI 正在优化' })
@@ -610,7 +652,7 @@ const optimizeTitle = async () => {
 }
 
 const generateDescription = async () => {
-  if (!canPublish.value) return toast('未完成学生认证')
+  if (!canPublish.value) return toast(publishLockedMessage.value || '\u672a\u5b8c\u6210\u5b66\u751f\u8ba4\u8bc1')
   if (!form.title) return toast('请先填写标题')
   try {
     uni.showLoading({ title: 'AI 正在生成' })
@@ -629,7 +671,7 @@ const generateDescription = async () => {
 }
 
 const validate = () => {
-  if (!canPublish.value) return '未完成学生认证'
+  if (!canPublish.value) return publishLockedMessage.value || '\u672a\u5b8c\u6210\u5b66\u751f\u8ba4\u8bc1'
   if (!form.images.length) return '请至少上传一张商品图片'
   if (!form.title) return '请填写商品标题'
   if (!selectedPrimaryId.value) return '请选择一级分类'
@@ -668,7 +710,7 @@ const submit = async () => {
     uni.showToast({ title: '发布成功', icon: 'success' })
     setTimeout(() => uni.switchTab({ url: '/pages/home/home' }), 600)
   } catch (error) {
-    toast(error.message || '发布失败')
+    toast(normalizeProductError(error, 'publish'))
   } finally {
     submitting.value = false
   }
