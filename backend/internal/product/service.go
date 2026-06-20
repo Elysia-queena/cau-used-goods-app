@@ -222,6 +222,20 @@ func (s *Service) ListProducts(ctx context.Context, input ProductListInput) (*Pr
 	})
 }
 
+func (s *Service) ListAdminProducts(ctx context.Context, input ProductListInput) (*ProductListResult, error) {
+	return s.repo.ListAdminProducts(ctx, ListProductsInput{
+		Keyword:        input.Keyword,
+		CategoryID:     input.CategoryID,
+		ConditionLevel: input.ConditionLevel,
+		Status:         input.Status,
+		MinPrice:       input.MinPrice,
+		MaxPrice:       input.MaxPrice,
+		Sort:           input.Sort,
+		Page:           input.Page,
+		PageSize:       input.PageSize,
+	})
+}
+
 type ProductViewer struct {
 	UserID uint64
 	Role   string
@@ -232,6 +246,13 @@ func (s *Service) GetProductByID(ctx context.Context, id uint64, viewer ProductV
 		return nil, err
 	}
 	return s.repo.GetProductByID(ctx, id)
+}
+
+func (s *Service) AdminGetProductByID(ctx context.Context, id uint64) (*Product, error) {
+	if id == 0 {
+		return nil, fmt.Errorf("productId is required")
+	}
+	return s.repo.AdminGetProductByID(ctx, id)
 }
 
 func (s *Service) ListMyProducts(ctx context.Context, sellerID uint64) ([]Product, error) {
