@@ -62,7 +62,7 @@ const changeStatus = async (status) => {
     }
     await updateAdminProductStatus(productId.value, status, extra)
     uni.showToast({ title: status === 'ON_SALE' ? '已上架' : '已下架', icon: 'success' })
-    load()
+    product.value = { ...product.value, status }
   } catch (error) {
     uni.showToast({ title: error.message || '商品状态更新失败', icon: 'none' })
   }

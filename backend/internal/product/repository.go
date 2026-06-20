@@ -41,6 +41,13 @@ type Product struct {
 	Images         []string `json:"images"`
 }
 
+type ProductNoticeInfo struct {
+	ID       uint64
+	SellerID uint64
+	Title    string
+	Status   string
+}
+
 func (r *Repository) ListCategories(ctx context.Context) ([]Category, error) {
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, name, parent_id, sort_order, status
@@ -450,6 +457,19 @@ func (r *Repository) GetProductByID(ctx context.Context, id uint64) (*Product, e
 	p.Images = images
 
 	return &p, nil
+}
+
+func (r *Repository) GetProductNoticeInfo(ctx context.Context, productID uint64) (*ProductNoticeInfo, error) {
+	var item ProductNoticeInfo
+	err := r.db.QueryRowContext(ctx, `
+		SELECT id, seller_id, title, status
+		FROM products
+		WHERE id = ? AND is_deleted = 0
+	`, productID).Scan(&item.ID, &item.SellerID, &item.Title, &item.Status)
+	if err != nil {
+		return nil, err
+	}
+	return &item, nil
 }
 
 func (r *Repository) ListProductImages(ctx context.Context, productID uint64) ([]string, error) {
