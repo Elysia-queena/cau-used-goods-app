@@ -3,7 +3,7 @@
     <view class="chat-head">
       <view class="chat-title clickable-title" @click="openSellerProfile">
         <text>{{ sellerName }}</text>
-        <text class="profile-link">查看主页</text>
+        <text class="profile-link">{{ isTargetUnavailable ? '已禁用' : '查看主页' }}</text>
       </view>
       <view class="chat-subtitle">请在平台内沟通交易细节，注意保护个人隐私</view>
     </view>
@@ -35,6 +35,13 @@
                 mode="aspectFill"
                 @click.stop="openUser(item.senderId)"
               />
+              <view
+                v-else-if="!item.mine && isTargetUnavailable"
+                class="avatar banned-avatar"
+                @click.stop="openUser(item.senderId)"
+              >
+                禁
+              </view>
               <view class="bubble">
                 <view class="content">{{ item.content }}</view>
               </view>
@@ -67,6 +74,7 @@ import { getPublicProfile } from '../../api/user'
 import { getUser } from '../../utils/auth'
 import { BASE_URL } from '../../utils/request'
 import { navigate } from '../../utils/navigation'
+import { accountStatusOf, isBannedUserStatus } from '../../utils/user-format'
 
 const conversationId = ref('')
 const title = ref('')
@@ -89,8 +97,19 @@ const currentUserId = computed(() => getUser()?.id || getUser()?.userId || '')
 const currentUser = computed(() => getUser() || {})
 const productTitle = computed(() => title.value || '商品详情')
 const pick = (...values) => values.find((value) => value !== undefined && value !== null && value !== '') || ''
+const BANNED_USER_TEXT = '！该用户已被封禁，无法查找'
 const sellerIdText = computed(() => pick(targetUserId.value, targetProfile.value?.id, targetProfile.value?.userId))
-const sellerName = computed(() => targetProfile.value?.nickname || targetNicknameSnapshot.value || '对方')
+const looksLikeEncodedNickname = (value = '') => /^%(?:[0-9A-Fa-f]{2})+/.test(String(value))
+const targetAccountStatus = computed(() => accountStatusOf(targetProfile.value?.user || targetProfile.value || {}))
+const isTargetUnavailable = computed(() => (
+  isBannedUserStatus(targetAccountStatus.value)
+  || looksLikeEncodedNickname(targetProfile.value?.nickname)
+  || looksLikeEncodedNickname(targetNicknameSnapshot.value)
+))
+const sellerName = computed(() => {
+  if (isTargetUnavailable.value) return BANNED_USER_TEXT
+  return targetProfile.value?.nickname || targetNicknameSnapshot.value || '对方'
+})
 const targetAvatar = computed(() => normalizeImage(pick(targetProfile.value?.avatarUrl, targetProfile.value?.avatar, targetProfile.value?.avatar_url, targetAvatarSnapshot.value)))
 const mineAvatar = computed(() => normalizeImage(pick(currentUser.value.avatarUrl, currentUser.value.avatar, mineProfile.value?.avatarUrl, mineProfile.value?.avatar, mineProfile.value?.avatar_url)))
 const mineName = computed(() => currentUser.value.nickname || mineProfile.value?.nickname || '我')
@@ -249,7 +268,9 @@ async function loadInitialTargetProfile() {
   if (!data) return
   const avatarUrl = await localizeHttpImage(normalizeImage(pick(data?.avatarUrl, data?.avatar, data?.avatar_url)))
   const profile = { ...data, avatarUrl }
-  targetNicknameSnapshot.value = profile.nickname || targetNicknameSnapshot.value
+  targetNicknameSnapshot.value = isBannedUserStatus(accountStatusOf(profile?.user || profile))
+    ? BANNED_USER_TEXT
+    : profile.nickname || targetNicknameSnapshot.value
   targetAvatarSnapshot.value = avatarUrl || targetAvatarSnapshot.value
   targetProfile.value = profile
   setProfile(targetUserId.value, profile)
@@ -305,12 +326,28 @@ const removeMessage = async (item) => {
 }
 
 function openUser(id) {
+  if (isTargetUnavailable.value && String(id || targetUserId.value) === String(targetUserId.value)) {
+    uni.showModal({
+      title: '提示',
+      content: '该用户已被永久禁用',
+      showCancel: false
+    })
+    return
+  }
   const profileId = id || targetUserId.value
   if (!profileId) return
   navigate('/pages/user-profile/user-profile', { id: profileId })
 }
 
 function openSellerProfile() {
+  if (isTargetUnavailable.value) {
+    uni.showModal({
+      title: '提示',
+      content: '该用户已被永久禁用',
+      showCancel: false
+    })
+    return
+  }
   const profileId = sellerIdText.value || targetUserId.value
   if (!profileId) return
   navigate('/pages/user-profile/user-profile', { id: profileId })
@@ -331,7 +368,8 @@ async function openProduct() {
       snapshotImage: image ? encodeURIComponent(image) : '',
       snapshotStatus: product?.status || '',
       snapshotSellerId: product?.sellerId || product?.seller?.id || '',
-      snapshotSellerName: product?.sellerName || product?.seller?.nickname || ''
+      snapshotSellerName: product?.sellerName || product?.seller?.nickname || '',
+      sellerUnavailable: isTargetUnavailable.value ? '1' : ''
     })
   } catch (error) {
     if (productId.value) {
@@ -391,6 +429,7 @@ onPullDownRefresh(async () => {
 .avatar { display: flex; width: 58rpx; height: 58rpx; flex-shrink: 0; align-items: center; justify-content: center; border-radius: 50%; color: #fff; font-size: 22rpx; font-weight: 700; }
 .seller-avatar { background: #6b8b7e; }
 .buyer-avatar { background: #23734f; }
+.banned-avatar { background: #d92d20; color: #fff; font-size: 25rpx; }
 .image-avatar { background: #e8ecef; }
 .mine .bubble { background: #23734f; color: #fff; }
 .content { font-size: 27rpx; line-height: 1.55; word-break: break-word; }
