@@ -1,5 +1,9 @@
 <template>
-  <view v-if="product" class="page">
+  <view v-if="bannedSellerBlocked" class="page blocked-page">
+    <view class="blocked-card">该用户已被封禁，商品下架，无法查看</view>
+  </view>
+
+  <view v-else-if="product" class="page">
     <swiper v-if="visibleImages.length" class="gallery" indicator-dots circular>
       <swiper-item v-for="image in visibleImages" :key="image">
         <image class="gallery-image" :src="image" mode="aspectFill" @error="markImageFailed(image)" />
@@ -83,13 +87,14 @@ import { getPublicProfile } from '../../api/user'
 import { buildCategoryMap, formatPrice, formatProduct, getStatusText, normalizeImage } from '../../utils/product-format'
 import { getToken, getUser, isVerifiedUser } from '../../utils/auth'
 import { navigate } from '../../utils/navigation'
-import { displayUserName, isBannedUserStatus, isCanceledUserStatus } from '../../utils/user-format'
+import { accountStatusOf, displayUserName, isBannedUserStatus, isCanceledUserStatus } from '../../utils/user-format'
 import { addBrowseHistory } from '../../utils/browse-history'
 
 const product = ref(null)
 const isFavorite = ref(false)
 const failedImages = ref([])
 const readonlyMode = ref(false)
+const bannedSellerBlocked = ref(false)
 const sellerProfile = ref(null)
 const sellerAvatarFile = ref('')
 
@@ -108,6 +113,7 @@ const sellerId = computed(() => (
   || ''
 ))
 const sellerSource = computed(() => sellerProfile.value || product.value?.seller || {})
+const sellerAccountStatus = computed(() => accountStatusOf(sellerSource.value))
 const sellerName = computed(() => displayUserName(sellerSource.value, 'CAU 同学'))
 const sellerAvatarUrl = computed(() => sellerAvatarFile.value || normalizeImage(pick(
   sellerSource.value?.avatarUrl,
@@ -185,6 +191,9 @@ async function loadSellerProfile() {
     const avatar = normalizeImage(pick(profile?.avatarUrl, profile?.avatar, profile?.avatar_url))
     sellerAvatarFile.value = await localizeHttpImage(avatar)
     sellerProfile.value = profile
+    if (isBannedUserStatus(accountStatusOf(profile?.user || profile))) {
+      bannedSellerBlocked.value = true
+    }
   } catch (error) {
     sellerProfile.value = null
     sellerAvatarFile.value = ''
@@ -290,13 +299,21 @@ function getDetailErrorText(error) {
   return '商品暂不可查看'
 }
 
+function isBlockedSellerSnapshot(options = {}) {
+  return options.sellerUnavailable === '1'
+    || isBannedUserStatus(options.snapshotSellerStatus)
+    || isBannedUserStatus(sellerAccountStatus.value)
+}
+
 onLoad(async (options) => {
   const { id } = options
   readonlyMode.value = options.readonly === '1' || options.readonly === 1
+  bannedSellerBlocked.value = isBlockedSellerSnapshot(options)
   if (!id) {
     toast('商品不存在')
     return
   }
+  if (bannedSellerBlocked.value) return
 
   try {
     const [detail, categories] = await Promise.all([getProductById(id), listCategories()])
@@ -317,6 +334,10 @@ onLoad(async (options) => {
       return
     }
     if (readonlyMode.value) {
+      if (isBlockedSellerSnapshot(options)) {
+        bannedSellerBlocked.value = true
+        return
+      }
       product.value = buildSnapshotProduct(id, options)
       failedImages.value = []
       await loadSellerProfile()
@@ -356,4 +377,6 @@ onLoad(async (options) => {
 .primary { flex: 1.4; color: #fff; background: #23734f; }
 button[disabled] { opacity: .48; }
 .loading-page { display: flex; align-items: center; justify-content: center; color: #667085; }
+.blocked-page { display: flex; align-items: center; justify-content: center; padding: 48rpx; box-sizing: border-box; }
+.blocked-card { width: 100%; padding: 44rpx 28rpx; border-radius: 18rpx; background: #fff; color: #26342f; font-size: 30rpx; font-weight: 700; text-align: center; box-sizing: border-box; }
 </style>

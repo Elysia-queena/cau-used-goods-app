@@ -30,10 +30,11 @@
           @touchend="touchEnd"
           @click="openChat(item)"
         >
-          <image v-if="item.avatar" class="avatar image-avatar" :src="item.avatar" mode="aspectFill" />
+          <view v-if="item.targetBanned" class="avatar banned-avatar">禁</view>
+          <image v-else-if="item.avatar" class="avatar image-avatar" :src="item.avatar" mode="aspectFill" />
           <view class="body">
             <view class="head">
-              <text class="name">{{ item.targetNickname || 'CAU 同学' }}</text>
+              <text class="name">{{ conversationDisplayName(item) }}</text>
               <text class="time">{{ formatTime(item.lastMessageTime || item.updateTime) }}</text>
             </view>
             <text class="product-line">商品：{{ conversationProductTitle(item) }}</text>
@@ -60,6 +61,7 @@ import { tradeService } from '../../services/trade'
 import { getUser } from '../../utils/auth'
 import { BASE_URL } from '../../utils/request'
 import { navigate, showError } from '../../utils/navigation'
+import { accountStatusOf, isBannedUserStatus } from '../../utils/user-format'
 
 const SYSTEM_TYPES = ['ORDER_CREATED', 'ORDER_CONFIRMED', 'ORDER_CANCELED', 'ORDER_TIMEOUT', 'REPORT_HANDLED', 'SYSTEM_NOTICE']
 const loading = ref(false)
@@ -144,6 +146,33 @@ function getPeerAvatar(item) {
     return normalizeImage(pick(item.sellerAvatarUrl, item.sellerAvatar, item.sellerUserAvatarUrl, item.seller?.avatarUrl, item.seller?.avatar, item.seller?.avatar_url, item.product?.seller?.avatarUrl, item.product?.seller?.avatar))
   }
   return ''
+}
+
+function getPeerStatus(item) {
+  const peerId = getPeerId(item)
+  const buyerId = getBuyerId(item)
+  const sellerId = getSellerId(item)
+  if (sameId(peerId, buyerId)) {
+    return pick(item.buyerAccountStatus, item.buyerStatus, item.buyer_account_status, item.buyer?.accountStatus, item.buyer?.account_status, item.buyer?.status)
+  }
+  if (sameId(peerId, sellerId)) {
+    return pick(item.sellerAccountStatus, item.sellerStatus, item.seller_account_status, item.seller?.accountStatus, item.seller?.account_status, item.seller?.status, item.product?.seller?.accountStatus, item.product?.seller?.account_status, item.product?.seller?.status)
+  }
+  return pick(
+    item.targetAccountStatus,
+    item.targetUserStatus,
+    item.otherUserStatus,
+    item.userStatus,
+    item.targetUser?.accountStatus,
+    item.targetUser?.account_status,
+    item.targetUser?.status,
+    item.otherUser?.accountStatus,
+    item.otherUser?.account_status,
+    item.otherUser?.status,
+    item.user?.accountStatus,
+    item.user?.account_status,
+    item.user?.status
+  )
 }
 
 function getConversationAvatar(item) {
@@ -238,6 +267,24 @@ function conversationPreview(item) {
   return item.lastMessageContent || `关于「${item.productTitle || '商品'}」的沟通`
 }
 
+function conversationDisplayName(item) {
+  const name = item.targetNickname || 'CAU 同学'
+  return item.targetBanned ? `${name}——该用户已被封禁` : name
+}
+
+function isBannedProfileError(error) {
+  const message = String(error?.message || '')
+  return message.includes('封禁')
+    || message.includes('禁用')
+    || message.includes('无法查找')
+    || message.includes('没有权限')
+    || message.includes('用户不存在')
+    || message.includes('不存在')
+    || message.includes('未找到相关数据')
+    || message.toLowerCase().includes('forbidden')
+    || message.toLowerCase().includes('permission')
+}
+
 async function load() {
   loading.value = true
   swipedId.value = ''
@@ -253,13 +300,27 @@ async function load() {
       id: String(item.id),
       targetNickname: getConversationNickname(item),
       targetUserId: getConversationTargetId(item),
-      avatar: getConversationAvatar(item)
+      avatar: getConversationAvatar(item),
+      targetBanned: isBannedUserStatus(getPeerStatus(item))
     }))
     conversations.value = await Promise.all(conversations.value.map(async (item) => {
       const targetUserId = item.targetUserId || getConversationTargetId(item)
       if (!targetUserId) return item
-      const profile = await getPublicProfile(targetUserId).catch(() => null)
+      const profile = await getPublicProfile(targetUserId).catch((error) => {
+        if (isBannedProfileError(error)) return { __bannedProfile: true }
+        return null
+      })
       if (!profile) return item
+      if (profile.__bannedProfile) {
+        return {
+          ...item,
+          targetUserId,
+          targetNickname: item.targetNickname || '该用户已封禁',
+          avatar: '',
+          targetBanned: true
+        }
+      }
+      const targetBanned = isBannedUserStatus(accountStatusOf(profile?.user || profile))
       const avatar = await localizeHttpImage(normalizeImage(pick(
         profile.avatarUrl,
         profile.avatar,
@@ -271,8 +332,9 @@ async function load() {
       return {
         ...item,
         targetUserId,
-        targetNickname: profile.nickname || item.targetNickname,
-        avatar
+        targetNickname: targetBanned ? (profile.nickname || item.targetNickname || '该用户已封禁') : (profile.nickname || item.targetNickname),
+        avatar: targetBanned ? '' : avatar,
+        targetBanned
       }
     }))
     updateTabBadge()
@@ -300,11 +362,21 @@ async function openChat(item) {
   const targetUserId = item.targetUserId || getConversationTargetId(item)
   let targetNickname = item.targetNickname || ''
   let targetAvatar = item.avatar || ''
+  let targetBanned = item.targetBanned
   if (targetUserId && (!targetNickname || !targetAvatar)) {
-    const profile = await getPublicProfile(targetUserId).catch(() => null)
+    const profile = await getPublicProfile(targetUserId).catch((error) => {
+      if (isBannedProfileError(error)) return { __bannedProfile: true }
+      return null
+    })
     if (profile) {
-      targetNickname = profile.nickname || targetNickname
-      targetAvatar = normalizeImage(pick(
+      if (profile.__bannedProfile) {
+        targetBanned = true
+        targetNickname = targetNickname || '该用户已封禁'
+        targetAvatar = ''
+      } else {
+      targetBanned = isBannedUserStatus(accountStatusOf(profile?.user || profile))
+      targetNickname = targetBanned ? (profile.nickname || targetNickname || '该用户已封禁') : (profile.nickname || targetNickname)
+      targetAvatar = targetBanned ? '' : normalizeImage(pick(
         profile.avatarUrl,
         profile.avatar,
         profile.avatar_url,
@@ -313,14 +385,15 @@ async function openChat(item) {
         profile.user?.avatar_url,
         targetAvatar
       ))
+      }
     }
   }
   navigate('/pages/chat/chat', {
     conversationId: item.id,
     title: conversationProductTitle(item) || '私信沟通',
     targetUserId,
-    targetNickname: targetNickname ? encodeURIComponent(targetNickname) : '',
-    targetAvatar: targetAvatar ? encodeURIComponent(targetAvatar) : '',
+    targetNickname: targetBanned ? encodeURIComponent('！该用户已被封禁，无法查找') : (targetNickname ? encodeURIComponent(targetNickname) : ''),
+    targetAvatar: !targetBanned && targetAvatar ? encodeURIComponent(targetAvatar) : '',
     productId: conversationProductId(item)
   })
 }
@@ -375,6 +448,7 @@ onShow(load)
 .user-conversation { z-index: 1; }
 .avatar { display: flex; width: 84rpx; height: 84rpx; flex-shrink: 0; align-items: center; justify-content: center; border-radius: 50%; color: #fff; font-size: 28rpx; font-weight: 700; }
 .system-avatar { background: #87909a; }
+.banned-avatar { background: #d92d20; color: #fff; font-size: 34rpx; }
 .image-avatar { background: #e8ecef; }
 .body { flex: 1; min-width: 0; }
 .head { display: flex; align-items: center; justify-content: space-between; gap: 16rpx; }
