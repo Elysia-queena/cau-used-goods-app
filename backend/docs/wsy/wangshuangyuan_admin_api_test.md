@@ -6,6 +6,7 @@
 
 ```http
 GET /admin/logs
+GET /admin/logs/:id
 ```
 
 内部能力：
@@ -105,6 +106,10 @@ Invoke-RestMethod `
 - 返回 `code = 0`。
 - `data.items` 中包含测试日志。
 - `data.total` 大于等于 2。
+- 每条日志包含 `adminName`、`adminAvatar`（管理员信息）。
+- 目标类型为 `USER` 时包含 `targetName`（用户昵称）、`targetCollege`（学院）。
+- 目标类型为 `PRODUCT` 时包含 `targetName`（商品标题）。
+- 目标类型为 `REPORT` 时包含 `reportReason`（举报原因）、`reporterName`（举报人昵称）。
 
 ### 3.4 按操作类型筛选
 
@@ -144,6 +149,21 @@ Invoke-RestMethod `
 预期：
 
 - 只返回当前管理员的日志。
+
+### 3.7 查询单条日志详情
+
+```powershell
+Invoke-RestMethod `
+  -Method Get `
+  -Uri "$baseUrl/admin/logs/1" `
+  -Headers $adminHeaders
+```
+
+预期：
+
+- 返回 `code = 0`。
+- 包含日志完整信息，包括 `adminName`、`adminAvatar`。
+- 超管可看到 `ipAddress`，普通管理员看不到。
 
 ## 四、异常场景测试
 
@@ -193,6 +213,25 @@ try {
 403
 ```
 
+### 4.3 查询不存在的日志
+
+```powershell
+try {
+  Invoke-RestMethod `
+    -Method Get `
+    -Uri "$baseUrl/admin/logs/99999" `
+    -Headers $adminHeaders
+} catch {
+  $_.Exception.Response.StatusCode.value__
+}
+```
+
+预期：
+
+```text
+404
+```
+
 ## 五、内部调用说明
 
 公告管理、敏感词管理等管理员操作完成后，可调用：
@@ -225,13 +264,16 @@ logID, err := adminService.LogAction(ctx, admin.LogActionInput{
 
 测试接口：
 - GET /admin/logs
+- GET /admin/logs/:id
 
 测试结果：
 - 管理员鉴权正常
 - 普通用户访问被拦截
-- 日志列表查询正常
+- 日志列表查询正常，联表信息正确
+- 单条日志详情查询正常
 - 按管理员、操作类型、目标类型筛选正常
 - 分页参数正常
+- 超管可见 IP，普通管理员不可见
 
 结论：管理员操作日志模块接口测试通过
 ```
@@ -240,6 +282,6 @@ logID, err := adminService.LogAction(ctx, admin.LogActionInput{
 
 ```bash
 git status
-git add backend/internal/admin backend/cmd/server/main.go backend/docs/wangshuangyuan_module_README.md backend/docs/wangshuangyuan_admin_api_test.md
-git commit -m "feat(admin): 完成管理员操作日志基础接口"
+git add backend/internal/admin backend/cmd/server/main.go backend/docs/wsy/wangshuangyuan_module_README.md backend/docs/wsy/wangshuangyuan_admin_api_test.md
+git commit -m "feat(admin): 完成管理员操作日志基础接口及详情弹窗"
 ```
